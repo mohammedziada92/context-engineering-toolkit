@@ -54,21 +54,14 @@ export default async function LandingPage() {
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-          <Button
-            render={<Link href="/login" />}
-            size="lg"
-            className="bg-violet-600 hover:bg-violet-500 text-white px-8 h-12 text-base font-medium"
-          >
-            Start Building Free
+          <Button asChild size="lg" className="bg-violet-600 hover:bg-violet-500 text-white px-8 h-12 text-base font-medium">
+            <Link href="/login">Start Building Free</Link>
           </Button>
-          <Button
-            render={<a href="https://github.com/mohammedziada92/context-engineering-toolkit" target="_blank" rel="noopener noreferrer" />}
-            size="lg"
-            variant="ghost"
-            className="h-12 text-base text-zinc-300 hover:text-white gap-2"
-          >
-            <Play className="h-4 w-4 fill-current" />
-            View Demo
+          <Button asChild size="lg" variant="ghost" className="h-12 text-base text-zinc-300 hover:text-white gap-2">
+            <a href="https://github.com/mohammedziada92/context-engineering-toolkit" target="_blank" rel="noopener noreferrer">
+              <Play className="h-4 w-4 fill-current" />
+              View Demo
+            </a>
           </Button>
         </div>
 
@@ -166,13 +159,11 @@ export default async function LandingPage() {
         <p className="text-zinc-400 mb-10 text-lg">
           Free forever. Bring your own OpenRouter key. No card required.
         </p>
-        <Button
-          render={<Link href="/login" />}
-          size="lg"
-          className="bg-violet-600 hover:bg-violet-500 text-white px-10 h-12 text-base font-medium gap-2"
-        >
-          Start Building Free
-          <ArrowRight className="h-4 w-4" />
+        <Button asChild size="lg" className="bg-violet-600 hover:bg-violet-500 text-white px-10 h-12 text-base font-medium gap-2">
+          <Link href="/login">
+            Start Building Free
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </Button>
       </section>
 
