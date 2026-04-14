@@ -176,7 +176,7 @@ export function PlaygroundPageContent() {
     const startTime = Date.now()
 
     try {
-      const res = await postChatStream(payload)
+      const res = await postChatStream(payload, abortRef.current.signal)
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
 
@@ -187,23 +187,35 @@ export function PlaygroundPageContent() {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const data = JSON.parse(line.slice(6))
-          if (data.type === 'token') {
+
+          if (data.content !== undefined && !data.status) {
+            // Token delta from LLM stream
             setMessages((m) =>
               m.map((msg) =>
                 msg.id === assistantId ? { ...msg, content: msg.content + data.content } : msg
               )
             )
-          } else if (data.type === 'chunks') {
+          } else if (data.chunks) {
+            // RAG retrieved chunks
             retrievedChunks = data.chunks
-          } else if (data.type === 'usage') {
+          } else if (data.status === 'done') {
+            // Stream complete — extract analytics
+            const a = data.analytics ?? {}
             finalMeta = {
-              tokens_in: data.tokens_in,
-              tokens_out: data.tokens_out,
-              cost_usd: data.cost_usd,
-              latency_ms: Date.now() - startTime,
+              tokens_in: a.prompt_tokens ?? 0,
+              tokens_out: a.completion_tokens ?? 0,
+              cost_usd: a.cost_usd ?? 0,
+              latency_ms: a.latency_ms ?? (Date.now() - startTime),
             }
-          } else if (data.type === 'done') {
             break
+          } else if (data.status === 'error') {
+            setMessages((m) =>
+              m.map((msg) =>
+                msg.id === assistantId
+                  ? { ...msg, content: `*Error: ${data.error ?? 'Unknown error'}*`, streaming: false }
+                  : msg
+              )
+            )
           }
         }
       }

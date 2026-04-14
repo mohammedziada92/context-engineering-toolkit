@@ -49,12 +49,13 @@ export interface ChatPayload {
   threshold?: number
 }
 
-export async function postChatStream(payload: ChatPayload): Promise<Response> {
+export async function postChatStream(payload: ChatPayload, signal?: AbortSignal): Promise<Response> {
   const headers = await getAuthHeader()
   return fetch(`${BASE}/api/v1/playground/chat`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    signal,
   })
 }
 
