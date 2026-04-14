@@ -6,6 +6,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.routes.analytics import router as analytics_router
 from app.api.routes.billing import router as billing_router
+from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.health import router as health_router
 from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.pipelines import router as pipelines_router
@@ -40,5 +41,6 @@ app.include_router(knowledge_router)
 app.include_router(pipelines_router)
 app.include_router(playground_router)
 app.include_router(analytics_router)
+app.include_router(dashboard_router)
 app.include_router(settings_router)
 app.include_router(billing_router)
