@@ -1,168 +1,113 @@
-import { apiFetch, getAuthHeader } from "@/lib/api/api";
+import { apiFetch } from './api'
 
-// ── Types ────────────────────────────────────────────────
-
-export interface AnalyticsFilters {
-  range?: string;
-  pipeline_id?: string;
-  model_id?: string;
-  from?: string;
-  to?: string;
-  format?: "csv" | "pdf";
+export interface RunRecord {
+  id: string
+  pipeline_id: string
+  pipeline_name: string
+  model: string
+  status: 'success' | 'error' | 'cancelled'
+  input_tokens: number
+  output_tokens: number
+  total_tokens: number
+  cost_usd: number
+  latency_ms: number
+  created_at: string
 }
 
-export interface SummaryResponse {
-  total_runs: number;
-  total_tokens: number;
-  total_cost: number;
-  avg_latency_ms: number;
-  avg_cost_per_run: number;
-  runs_delta?: number;
-  tokens_delta?: number;
-  cost_delta?: number;
-  latency_delta?: number;
-  cost_per_run_delta?: number;
+export interface DailyUsage {
+  date: string           // ISO date "2026-04-01"
+  input_tokens: number
+  output_tokens: number
+  total_tokens: number
+  cost_usd: number
+  run_count: number
 }
 
-export interface TokenUsageEntry {
-  date: string;
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
+export interface ModelBreakdown {
+  model: string
+  run_count: number
+  total_tokens: number
+  cost_usd: number
+  avg_latency_ms: number
+  error_rate: number     // 0.0 – 1.0
 }
 
-export interface CostEntry {
-  date: string;
-  model_used: string;
-  cost_usd: number;
+export interface PipelineBreakdown {
+  pipeline_id: string
+  pipeline_name: string
+  run_count: number
+  total_tokens: number
+  cost_usd: number
+  success_rate: number   // 0.0 – 1.0
+  avg_latency_ms: number
 }
 
-export interface CostByModelEntry {
-  model_used: string;
-  total_cost: number;
-  run_count: number;
+export interface AnalyticsSummary {
+  total_runs: number
+  success_runs: number
+  error_runs: number
+  total_tokens: number
+  total_cost_usd: number
+  avg_latency_ms: number
+  period_start: string
+  period_end: string
 }
 
-export interface RunsByPipelineEntry {
-  pipeline_id: string;
-  pipeline_name: string;
-  run_count: number;
-  total_cost: number;
+export interface AnalyticsResponse {
+  summary:            AnalyticsSummary
+  daily_usage:        DailyUsage[]
+  model_breakdown:    ModelBreakdown[]
+  pipeline_breakdown: PipelineBreakdown[]
 }
 
-export interface LatencyDistributionBucket {
-  bucket: string;
-  runs: number;
-  pct: number;
-}
-
-export interface LatencyDistributionStats {
-  median: number;
-  p95: number;
-  p99: number;
-}
-
-export interface LatencyDistributionResponse {
-  buckets: LatencyDistributionBucket[];
-  stats: LatencyDistributionStats;
-}
-
-export interface RunEntry {
-  id: string;
-  pipeline_id: string | null;
-  pipeline_name: string | null;
-  user_message: string;
-  model_used: string;
-  status: string;
-  total_tokens: number;
-  cost_usd: number;
-  latency_ms: number;
-  created_at: string;
+export interface RunsParams {
+  page?:        number
+  limit?:       number
+  pipeline_id?: string
+  model?:       string
+  status?:      'success' | 'error' | 'cancelled' | ''
+  period?:      '7d' | '30d' | '90d'
 }
 
 export interface RunsResponse {
-  runs: RunEntry[];
-  total: number;
-  page: number;
-  page_size: number;
+  items: RunRecord[]
+  total: number
+  page:  number
+  limit: number
 }
 
-// ── Helper ───────────────────────────────────────────────
+export const getAnalytics = (period: '7d' | '30d' | '90d' = '30d'): Promise<AnalyticsResponse> =>
+  apiFetch(`/api/v1/analytics?period=${period}`)
 
-function buildParams(filters: AnalyticsFilters): string {
-  const p = new URLSearchParams();
-  if (filters.range && filters.range !== "custom") p.set("range", filters.range);
-  if (filters.from) p.set("from", filters.from);
-  if (filters.to) p.set("to", filters.to);
-  if (filters.pipeline_id) p.set("pipeline_id", filters.pipeline_id);
-  if (filters.model_id) p.set("model_id", filters.model_id);
-  return p.toString();
+export const getRuns = (params: RunsParams = {}): Promise<RunsResponse> => {
+  const q = new URLSearchParams()
+  if (params.page)        q.set('page',        String(params.page))
+  if (params.limit)       q.set('limit',       String(params.limit))
+  if (params.pipeline_id) q.set('pipeline_id', params.pipeline_id)
+  if (params.model)       q.set('model',       params.model)
+  if (params.status)      q.set('status',      params.status)
+  if (params.period)      q.set('period',      params.period)
+  return apiFetch(`/api/v1/analytics/runs?${q}`)
 }
 
-// ── API calls ────────────────────────────────────────────
-
-export async function getSummary(filters: AnalyticsFilters = {}) {
-  return apiFetch(`/api/v1/analytics/summary?${buildParams(filters)}`);
+/** Format USD cost with appropriate precision */
+export function formatCost(usd: number): string {
+  if (usd === 0)     return '$0.00'
+  if (usd < 0.001)   return `$${(usd * 1000).toFixed(3)}m` // sub-cent: show millicents
+  if (usd < 0.01)    return `$${usd.toFixed(4)}`
+  if (usd < 1)       return `$${usd.toFixed(3)}`
+  return `$${usd.toFixed(2)}`
 }
 
-export function getTokenUsage(filters: AnalyticsFilters = {}) {
-  return apiFetch<TokenUsageEntry[]>(
-    `/api/v1/analytics/token-usage?${buildParams(filters)}`
-  );
+/** Format token count with K/M suffix */
+export function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`
+  return String(n)
 }
 
-export function getCost(filters: AnalyticsFilters = {}) {
-  return apiFetch<CostEntry[]>(
-    `/api/v1/analytics/cost?${buildParams(filters)}`
-  );
-}
-
-export async function getCostByModel(filters: AnalyticsFilters = {}) {
-  return apiFetch(`/api/v1/analytics/cost-by-model?${buildParams(filters)}`);
-}
-
-export async function getRunsByPipeline(filters: AnalyticsFilters = {}) {
-  return apiFetch(`/api/v1/analytics/runs-by-pipeline?${buildParams(filters)}`);
-}
-
-export async function getLatencyDistribution(filters: AnalyticsFilters = {}) {
-  return apiFetch(`/api/v1/analytics/latency-distribution?${buildParams(filters)}`);
-}
-
-export function getRuns(
-  page: number = 1,
-  pageSize: number = 20,
-  filters: AnalyticsFilters = {}
-) {
-  const params = new URLSearchParams({
-    page: String(page),
-    page_size: String(pageSize),
-  });
-  if (filters.pipeline_id) params.set("pipeline_id", filters.pipeline_id);
-  if (filters.model_id) params.set("model_id", filters.model_id);
-  if (filters.from) params.set("from", filters.from);
-  if (filters.to) params.set("to", filters.to);
-  return apiFetch<RunsResponse>(`/api/v1/analytics/runs?${params}`);
-}
-
-// ── Export (triggers browser download) ───────────────────
-
-export async function exportAnalytics(
-  filters: AnalyticsFilters & { format: "csv" | "pdf" }
-) {
-  const headers = await getAuthHeader();
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/analytics/export?${buildParams(filters)}&format=${filters.format}`,
-    { headers }
-  );
-  if (!res.ok) throw new Error("Export failed");
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `cet-analytics-${filters.range ?? "custom"}-${new Date().toISOString().split("T")[0]}.${filters.format}`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+/** Format latency: ms under 1s, seconds above */
+export function formatLatency(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(1)}s`
 }
