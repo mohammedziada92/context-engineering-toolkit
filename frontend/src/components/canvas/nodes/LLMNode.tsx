@@ -7,7 +7,7 @@ import { usePipelineStore, type LLMNodeData } from '@/stores/pipeline.store'
 import { modelShortname } from '@/lib/models'
 
 export const LLMNode = memo(function LLMNode({ id, data, selected }: NodeProps) {
-  const d           = data as { type: 'llm' } & LLMNodeData
+  const d           = data as unknown as { type: 'llm' } & LLMNodeData
   const setSelected = usePipelineStore((s) => s.setSelectedNode)
 
   return (

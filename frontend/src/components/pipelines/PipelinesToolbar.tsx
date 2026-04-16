@@ -51,7 +51,7 @@ export function PipelinesToolbar({
       </div>
 
       {/* Status filter */}
-      <Select value={status || 'all'} onValueChange={(v) => onStatusChange(v === 'all' ? '' : v)}>
+      <Select value={status || 'all'} onValueChange={(v) => onStatusChange((v ?? 'all') === 'all' ? '' : v ?? '')}>
         <SelectTrigger className="w-[130px] bg-zinc-900 border-zinc-800 text-zinc-300">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
@@ -63,7 +63,7 @@ export function PipelinesToolbar({
       </Select>
 
       {/* Sort */}
-      <Select value={sort} onValueChange={onSortChange}>
+      <Select value={sort} onValueChange={(v) => onSortChange(v ?? '')}>
         <SelectTrigger className="w-[150px] bg-zinc-900 border-zinc-800 text-zinc-300">
           <SelectValue placeholder="Sort by" />
         </SelectTrigger>

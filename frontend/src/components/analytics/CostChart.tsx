@@ -52,8 +52,8 @@ export function CostChart({ dailyUsage, loading }: Props) {
                 background: '#18181b', border: '1px solid #27272a',
                 borderRadius: '8px', fontSize: '11px', color: '#d4d4d8',
               }}
-              formatter={(val: number, _: string, entry: { payload: { runs: number } }) => [
-                `${formatCost(val)} (${entry.payload.runs} runs)`,
+              formatter={(val, _, entry) => [
+                `${formatCost(Number(val))} (${entry.payload.runs} runs)`,
                 'Cost',
               ]}
               labelFormatter={(l) => l}

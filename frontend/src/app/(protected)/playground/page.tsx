@@ -7,6 +7,8 @@ import {
   createSession,
   getMessages,
   addMessage,
+  type Session,
+  type SessionMessage,
 } from "@/lib/api/playground";
 import { SUPPORTED_MODELS } from "@/lib/api/settings";
 import { createClient } from "@/lib/supabase/client";
@@ -88,12 +90,12 @@ export default function PlaygroundPage() {
 
   // ── Queries ──────────────────────────────────────────────
 
-  const { data: sessions } = useQuery({
+  const { data: sessions } = useQuery<Session[]>({
     queryKey: ["playground-sessions"],
     queryFn: getSessions,
   });
 
-  const { data: messages } = useQuery({
+  const { data: messages } = useQuery<SessionMessage[]>({
     queryKey: ["playground-messages", activeSessionId],
     queryFn: () => (activeSessionId ? getMessages(activeSessionId) : []),
     enabled: !!activeSessionId,
@@ -482,7 +484,7 @@ export default function PlaygroundPage() {
                 {SUPPORTED_MODELS.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     <span className="flex items-center gap-2">
-                      {m.label}
+                      {m.name}
                       <Badge
                         variant={MODEL_BADGES[m.id]?.variant ?? "outline"}
                         className="text-[9px] ml-1"
@@ -516,7 +518,7 @@ export default function PlaygroundPage() {
               Current Model
             </p>
             <p className="text-sm text-foreground">
-              {SUPPORTED_MODELS.find((m) => m.id === model)?.label}
+              {SUPPORTED_MODELS.find((m) => m.id === model)?.name}
             </p>
             <Badge
               variant={MODEL_BADGES[model]?.variant ?? "outline"}

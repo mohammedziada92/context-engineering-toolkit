@@ -18,9 +18,10 @@ interface DateRangeSelectorProps {
   from?: string
   to?: string
   onChange: (key: string, value: string | null) => void
+  onBatchChange?: (updates: Record<string, string | null>) => void
 }
 
-export function DateRangeSelector({ range, from, to, onChange }: DateRangeSelectorProps) {
+export function DateRangeSelector({ range, from, to, onChange, onBatchChange }: DateRangeSelectorProps) {
   const [showCustom, setShowCustom] = useState(false)
   const [customFrom, setCustomFrom] = useState(from ?? '')
   const [customTo, setCustomTo] = useState(to ?? '')
@@ -36,16 +37,29 @@ export function DateRangeSelector({ range, from, to, onChange }: DateRangeSelect
     const shift = direction === 'prev' ? -days : days
     fromDate.setDate(fromDate.getDate() + shift)
     toDate.setDate(toDate.getDate() + shift)
-    onChange('from', fromDate.toISOString().split('T')[0])
-    onChange('to', toDate.toISOString().split('T')[0])
-    if (range !== 'custom') onChange('range', 'custom')
+    if (onBatchChange) {
+      const updates: Record<string, string | null> = {
+        from: fromDate.toISOString().split('T')[0],
+        to: toDate.toISOString().split('T')[0],
+      }
+      if (range !== 'custom') updates.range = 'custom'
+      onBatchChange(updates)
+    } else {
+      onChange('from', fromDate.toISOString().split('T')[0])
+      onChange('to', toDate.toISOString().split('T')[0])
+      if (range !== 'custom') onChange('range', 'custom')
+    }
   }
 
   function applyCustom() {
     if (!customFrom || !customTo) return
-    onChange('from', customFrom)
-    onChange('to', customTo)
-    onChange('range', 'custom')
+    if (onBatchChange) {
+      onBatchChange({ range: 'custom', from: customFrom, to: customTo })
+    } else {
+      onChange('from', customFrom)
+      onChange('to', customTo)
+      onChange('range', 'custom')
+    }
     setShowCustom(false)
   }
 
@@ -55,9 +69,13 @@ export function DateRangeSelector({ range, from, to, onChange }: DateRangeSelect
       return
     }
     setShowCustom(false)
-    onChange('range', value)
-    onChange('from', null)
-    onChange('to', null)
+    if (onBatchChange) {
+      onBatchChange({ range: value, from: null, to: null })
+    } else {
+      onChange('range', value)
+      onChange('from', null)
+      onChange('to', null)
+    }
   }
 
   const displayRange = from && to

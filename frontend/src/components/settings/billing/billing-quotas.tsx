@@ -15,7 +15,7 @@ interface UsageData {
 }
 
 async function fetchUsage(): Promise<UsageData> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/billing/usage`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/billing/usage`, {
     headers: await getAuthHeader(),
   })
   if (!res.ok) throw new Error('Failed to fetch usage')

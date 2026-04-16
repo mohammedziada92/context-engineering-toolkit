@@ -6,7 +6,7 @@ import { Search, Settings2 } from 'lucide-react'
 import { usePipelineStore, type RAGNodeData } from '@/stores/pipeline.store'
 
 export const RAGNode = memo(function RAGNode({ id, data, selected }: NodeProps) {
-  const d           = data as { type: 'rag' } & RAGNodeData
+  const d           = data as unknown as { type: 'rag' } & RAGNodeData
   const setSelected = usePipelineStore((s) => s.setSelectedNode)
 
   return (

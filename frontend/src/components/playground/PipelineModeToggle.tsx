@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { listPipelines } from '@/lib/api/pipelines'
+import { listPipelines, type PipelinesListResponse, type Pipeline } from '@/lib/api/pipelines'
 import { ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 
@@ -15,15 +15,15 @@ interface Props {
 }
 
 export function PipelineModeToggle({ mode, pipelineId, onModeChange, onPipelineChange }: Props) {
-  const { data: pipelines = [] } = useQuery({
+  const { data: pipelinesResponse } = useQuery<PipelinesListResponse>({
     queryKey: ['pipelines-active'],
-    queryFn: listPipelines,
+    queryFn: () => listPipelines(),
     staleTime: 60_000,
     enabled: mode === 'pipeline',
   })
 
   // Filter to active pipelines client-side
-  const activePipelines = (pipelines as any[]).filter(
+  const activePipelines: Pipeline[] = (pipelinesResponse?.items ?? []).filter(
     (p) => !p.status || p.status === 'active'
   )
 
@@ -57,7 +57,7 @@ export function PipelineModeToggle({ mode, pipelineId, onModeChange, onPipelineC
             <option value="" disabled>Select a pipeline…</option>
             {activePipelines.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} ({p.pipeline_config?.model?.split('/').pop() ?? 'unknown'} · {p.node_count ?? '?'} nodes)
+                {p.name} ({typeof p.pipeline_config?.model === 'string' ? p.pipeline_config.model.split('/').pop() : 'unknown'} · {p.canvas_state?.nodes?.length ?? '?'} nodes)
               </option>
             ))}
           </select>

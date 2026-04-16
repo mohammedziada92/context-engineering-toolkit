@@ -103,7 +103,7 @@ export function NodePanel() {
         id,
         type: nodeType,
         position: { x: 250 + Math.random() * 100, y: 100 + Math.random() * 200 },
-        data: defaultData as CETNodeData,
+        data: defaultData,
       })
     },
     [addNode]

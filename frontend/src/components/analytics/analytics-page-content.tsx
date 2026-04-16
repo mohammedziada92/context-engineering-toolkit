@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart2 } from 'lucide-react'
-import { getAnalytics, type AnalyticsResponse } from '@/lib/api/analytics'
+import { getAnalytics, type AnalyticsResponse, type Period } from '@/lib/api/analytics'
 import { PeriodSelector }     from './PeriodSelector'
 import { SummaryKPIs }        from './SummaryKPIs'
 import { TokenUsageChart }    from './TokenUsageChart'
@@ -11,8 +11,6 @@ import { CostChart }          from './CostChart'
 import { ModelBreakdownTable }    from './ModelBreakdownTable'
 import { PipelineBreakdownTable } from './PipelineBreakdownTable'
 import { RunHistoryTable }        from './RunHistoryTable'
-
-export type Period = '7d' | '30d' | '90d'
 
 export function AnalyticsPageContent() {
   const [period, setPeriod] = useState<Period>('30d')

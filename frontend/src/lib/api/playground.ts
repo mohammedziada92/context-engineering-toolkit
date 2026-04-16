@@ -1,34 +1,76 @@
 import { apiFetch, getAuthHeader } from './api'
+import type { Pipeline } from './pipelines'
 
-const BASE = process.env.NEXT_PUBLIC_BACKEND_URL
+const BASE = process.env.NEXT_PUBLIC_API_URL
+
+// ── Types ─────────────────────────────────────────────────────
+
+export interface Session {
+  id: string
+  name: string
+  mode: 'direct' | 'pipeline'
+  pipeline_id: string | null
+  config: Record<string, unknown>
+  message_count: number
+  created_at: string
+  updated_at: string
+  messages?: SessionMessage[]
+  total_tokens?: number
+  total_cost?: number
+}
+
+export interface SessionMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  model?: string
+  metadata?: Record<string, unknown>
+  created_at?: string
+}
 
 // ── Session CRUD ─────────────────────────────────────────────
-export async function listSessions() {
+
+export async function listSessions(): Promise<Session[]> {
   return apiFetch('/api/v1/playground/sessions?limit=20')
 }
 
-export async function getSession(id: string) {
+/** Alias used by playground page */
+export const getSessions = listSessions
+
+export async function getSession(id: string): Promise<Session> {
   return apiFetch(`/api/v1/playground/sessions/${id}`)
 }
 
-export async function createSession(payload: {
-  mode: 'direct' | 'pipeline'
-  pipeline_id?: string | null
-  config: Record<string, unknown>
-  name?: string
-}) {
-  return apiFetch('/api/v1/playground/sessions', { method: 'POST', body: JSON.stringify(payload) })
+export async function getMessages(sessionId: string): Promise<SessionMessage[]> {
+  return apiFetch(`/api/v1/playground/sessions/${sessionId}/messages`)
 }
 
-export async function updateSession(id: string, patch: Record<string, unknown>) {
+export async function addMessage(sessionId: string, role: 'user' | 'assistant', content: string): Promise<SessionMessage> {
+  return apiFetch(`/api/v1/playground/sessions/${sessionId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ role, content }),
+  })
+}
+
+export async function createSession(payload?: {
+  mode?: 'direct' | 'pipeline'
+  pipeline_id?: string | null
+  config?: Record<string, unknown>
+  name?: string
+}): Promise<Session> {
+  const body = payload ?? { mode: 'direct', config: {} }
+  return apiFetch('/api/v1/playground/sessions', { method: 'POST', body: JSON.stringify(body) })
+}
+
+export async function updateSession(id: string, patch: Record<string, unknown>): Promise<Session> {
   return apiFetch(`/api/v1/playground/sessions/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
 }
 
-export async function deleteSession(id: string) {
+export async function deleteSession(id: string): Promise<void> {
   return apiFetch(`/api/v1/playground/sessions/${id}`, { method: 'DELETE' })
 }
 
-export async function deleteAllSessions() {
+export async function deleteAllSessions(): Promise<void> {
   return apiFetch('/api/v1/playground/sessions', { method: 'DELETE' })
 }
 
@@ -70,7 +112,7 @@ export async function saveAsPipeline(payload: {
   knowledge_source_id?: string | null
   top_k?: number
   threshold?: number
-}) {
+}): Promise<Pipeline> {
   return apiFetch('/api/v1/pipelines', {
     method: 'POST',
     body: JSON.stringify({
@@ -98,7 +140,7 @@ function buildCanvasFromConfig(cfg: {
   top_k?: number
   threshold?: number
 }) {
-  const nodes = [
+  const nodes: Array<{ id: string; type: string; position: { x: number; y: number }; data: Record<string, unknown> }> = [
     { id: 'user-msg', type: 'userMessage', position: { x: 80, y: 200 }, data: {} },
     { id: 'sys-prompt', type: 'systemPrompt', position: { x: 80, y: 80 }, data: { content: cfg.system_prompt } },
     { id: 'llm', type: 'llmModel', position: { x: 480, y: 160 }, data: { model: cfg.model } },
@@ -147,12 +189,12 @@ export function exportAsMarkdown(session: SessionExport): string {
     lines.push('')
     lines.push(msg.content)
     if (msg.metadata) {
-      const m = msg.metadata
+      const m = msg.metadata as Record<string, number | string | undefined>
       const parts: string[] = []
       if (m.tokens_in) parts.push(`${m.tokens_in} in`)
       if (m.tokens_out) parts.push(`${m.tokens_out} out`)
-      if (m.cost_usd) parts.push(`$${m.cost_usd.toFixed(4)}`)
-      if (m.latency_ms) parts.push(`${(m.latency_ms / 1000).toFixed(2)}s`)
+      if (m.cost_usd) parts.push(`$${(m.cost_usd as number).toFixed(4)}`)
+      if (m.latency_ms) parts.push(`${((m.latency_ms as number) / 1000).toFixed(2)}s`)
       if (parts.length) lines.push(``, `*${parts.join(' · ')}*`)
     }
     lines.push('', '---', '')

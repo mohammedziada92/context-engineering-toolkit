@@ -69,7 +69,7 @@ export function computeTokenUsage(nodes: Node[]): {
 } {
   let sp = 0, rag = 0, hist = 0
   for (const n of nodes) {
-    const d = n.data as CETNodeData
+    const d = n.data as unknown as CETNodeData
     if (d.type === 'systemPrompt') sp   = d.max_tokens
     if (d.type === 'rag')          rag  = d.max_tokens
     if (d.type === 'history')      hist = d.max_tokens
@@ -82,7 +82,7 @@ export function computeTokenUsage(nodes: Node[]): {
 
 export function validatePipeline(nodes: Node[], edges: Edge[]): string[] {
   const errors: string[] = []
-  const types = nodes.map((n) => (n.data as CETNodeData).type)
+  const types = nodes.map((n) => (n.data as unknown as CETNodeData).type)
 
   if (!types.includes('llm'))    errors.push('Add an LLM Model node')
   if (!types.includes('output')) errors.push('Add an Output node')
@@ -90,7 +90,7 @@ export function validatePipeline(nodes: Node[], edges: Edge[]): string[] {
   // Check every non-output node has at least one outgoing edge
   const sources = new Set(edges.map((e) => e.source))
   for (const n of nodes) {
-    const d = n.data as CETNodeData
+    const d = n.data as unknown as CETNodeData
     if (d.type !== 'output' && !sources.has(n.id)) {
       errors.push(`"${n.id}" node is not connected`)
     }
@@ -128,7 +128,7 @@ export interface PipelineStore {
   onNodesChange: (changes: NodeChange[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
   onConnect:     (connection: Connection) => void
-  addNode:       (node: Node) => void
+  addNode:       (node: Omit<Node, 'data'> & { data: unknown }) => void
   updateNodeData:(id: string, data: Partial<CETNodeData>) => void
   deleteNode:    (id: string) => void
   setViewport:   (viewport: Viewport) => void
@@ -185,7 +185,7 @@ export const usePipelineStore = create<PipelineStore>()(
       })),
 
     addNode: (node) =>
-      set((s) => ({ nodes: [...s.nodes, node], isDirty: true })),
+      set((s) => ({ nodes: [...s.nodes, node as Node], isDirty: true })),
 
     updateNodeData: (id, data) =>
       set((s) => ({

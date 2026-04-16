@@ -48,12 +48,12 @@ export function RunModal({ pipeline, onClose }: Props) {
     if (!message.trim()) return
     setOutput(''); setUsage(null); setError(null); setStreaming(true)
 
-    const token = await getAuthHeader()
+    const headers = await getAuthHeader()
     const url   = `${API_BASE}/api/v1/pipelines/${pipeline.id}/run/stream?` +
       new URLSearchParams({
         message,
         ...(modelOverride !== 'default' ? { model_override: modelOverride } : {}),
-        authorization: token,
+        authorization: headers.Authorization,
       })
 
     const es = new EventSource(url)
@@ -121,7 +121,7 @@ export function RunModal({ pipeline, onClose }: Props) {
           {/* Model override */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-400">Model Override</label>
-            <Select value={modelOverride} onValueChange={setModel}>
+            <Select value={modelOverride} onValueChange={(v) => { if (v !== null) setModel(v) }}>
               <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-300 w-full">
                 <SelectValue />
               </SelectTrigger>

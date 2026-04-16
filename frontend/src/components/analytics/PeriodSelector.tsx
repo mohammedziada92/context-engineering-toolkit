@@ -1,6 +1,6 @@
 'use client'
 
-import type { Period } from './AnalyticsPageContent'
+import type { Period } from '@/lib/api/analytics'
 
 const OPTIONS: { value: Period; label: string }[] = [
   { value: '7d',  label: '7 days'  },

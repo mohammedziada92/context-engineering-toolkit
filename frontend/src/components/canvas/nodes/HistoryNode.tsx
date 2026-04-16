@@ -8,7 +8,7 @@ import { usePipelineStore, type HistoryNodeData } from '@/stores/pipeline.store'
 const STRATEGY_LABELS = { keep: 'Keep all', summarize: 'Summarize', truncate: 'Truncate' }
 
 export const HistoryNode = memo(function HistoryNode({ id, data, selected }: NodeProps) {
-  const d           = data as { type: 'history' } & HistoryNodeData
+  const d           = data as unknown as { type: 'history' } & HistoryNodeData
   const setSelected = usePipelineStore((s) => s.setSelectedNode)
 
   return (

@@ -28,7 +28,7 @@ export function BillingV2Preview({ userEmail }: BillingV2PreviewProps) {
     setStatus('loading')
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/billing/notify-interest`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/billing/notify-interest`,
         {
           method: 'POST',
           headers: {

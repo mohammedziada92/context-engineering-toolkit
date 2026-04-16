@@ -61,8 +61,8 @@ export function TokenUsageChart({ dailyUsage, loading }: Props) {
                 background: '#18181b', border: '1px solid #27272a',
                 borderRadius: '8px', fontSize: '11px', color: '#d4d4d8',
               }}
-              formatter={(val: number, name: string) => [
-                formatTokens(val),
+              formatter={(val, name) => [
+                formatTokens(Number(val)),
                 name === 'input' ? 'Input tokens' : 'Output tokens',
               ]}
               labelFormatter={(l) => l}

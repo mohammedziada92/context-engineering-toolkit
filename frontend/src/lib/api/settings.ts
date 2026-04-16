@@ -1,4 +1,8 @@
 import { apiFetch } from './api'
+import { SUPPORTED_MODELS } from '@/lib/models'
+
+// Re-export for convenience — used by playground page
+export { SUPPORTED_MODELS }
 
 export interface UserSettings {
   user_id: string

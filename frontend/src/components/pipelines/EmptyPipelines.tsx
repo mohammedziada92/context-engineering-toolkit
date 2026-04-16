@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { GitBranch, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 export function EmptyPipelines({ hasFilters }: { hasFilters: boolean }) {
   if (hasFilters) {
@@ -24,12 +23,13 @@ export function EmptyPipelines({ hasFilters }: { hasFilters: boolean }) {
           Build your first RAG pipeline visually — no code required.
         </p>
       </div>
-      <Button asChild className="bg-violet-600 hover:bg-violet-500 text-white gap-2">
-        <Link href="/pipelines/new">
-          <Plus className="h-4 w-4" />
-          Create Pipeline
-        </Link>
-      </Button>
+      <Link
+        href="/pipelines/new"
+        className="inline-flex items-center gap-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-2.5 py-1.5 transition-colors"
+      >
+        <Plus className="h-4 w-4" />
+        Create Pipeline
+      </Link>
     </div>
   )
 }

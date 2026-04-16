@@ -1,5 +1,7 @@
 import { apiFetch } from './api'
 
+export type Period = '7d' | '30d' | '90d'
+
 export interface RunRecord {
   id: string
   pipeline_id: string

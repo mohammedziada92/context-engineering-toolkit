@@ -89,7 +89,7 @@ export function CreateSourceModal({ creating, onCreate, onClose }: Props) {
             <Label className="text-xs text-zinc-400">Embedding Model</Label>
             <Select
               defaultValue="text-embedding-3-small"
-              onValueChange={(v) => setValue('embedding_model', v)}
+              onValueChange={(v) => setValue('embedding_model', v ?? '')}
             >
               <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-300 text-xs">
                 <SelectValue />

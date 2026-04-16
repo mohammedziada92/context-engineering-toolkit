@@ -17,7 +17,7 @@ interface Props {
 
 export function KnowledgeDeleteDialog({ source, deleting, onConfirm, onCancel }: Props) {
   return (
-    <AlertDialog open onOpenChange={(open) => { if (!open) onCancel() }}>
+    <AlertDialog open onOpenChange={(open: boolean) => { if (!open) onCancel() }}>
       <AlertDialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-sm">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-base">Delete &quot;{source.name}&quot;?</AlertDialogTitle>

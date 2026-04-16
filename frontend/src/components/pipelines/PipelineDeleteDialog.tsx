@@ -22,7 +22,7 @@ interface Props {
 
 export function PipelineDeleteDialog({ pipeline, deleting, onConfirm, onCancel }: Props) {
   return (
-    <AlertDialog open onOpenChange={(open) => !open && onCancel()}>
+    <AlertDialog open onOpenChange={(open: boolean) => !open && onCancel()}>
       <AlertDialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete &quot;{pipeline.name}&quot;?</AlertDialogTitle>

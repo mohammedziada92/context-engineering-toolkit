@@ -67,8 +67,8 @@ export function RAGContextInspector({ chunks }: Props) {
                   </span>
                   <span className="text-xs text-zinc-400">
                     {scoreLabel(chunk.score)} · Chunk {chunk.chunk_index}
-                    {chunk.metadata?.page && ` · Pg ${chunk.metadata.page}`}
-                    {chunk.metadata?.source && ` · ${chunk.metadata.source}`}
+                    {chunk.metadata?.page != null && ` · Pg ${String(chunk.metadata.page)}`}
+                    {chunk.metadata?.source != null && ` · ${String(chunk.metadata.source)}`}
                   </span>
                 </div>
                 {expanded.has(i)

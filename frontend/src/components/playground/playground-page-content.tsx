@@ -10,6 +10,7 @@ import {
   getSession,
   type ChatPayload,
   type SessionExport,
+  type Session,
   exportAsMarkdown,
 } from '@/lib/api/playground'
 import { PipelineModeToggle } from './PipelineModeToggle'
@@ -89,7 +90,7 @@ export function PlaygroundPageContent() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const { data: sessions } = useQuery({
+  const { data: sessions } = useQuery<Session[]>({
     queryKey: ['playground-sessions'],
     queryFn: listSessions,
     staleTime: 30_000,

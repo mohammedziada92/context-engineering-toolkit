@@ -7,7 +7,7 @@ import { Button }  from '@/components/ui/button'
 import { Input }   from '@/components/ui/input'
 import { Badge }   from '@/components/ui/badge'
 import { Slider }  from '@/components/ui/slider'
-import { searchChunks, type SearchResult } from '@/lib/api/knowledge'
+import { searchChunks, type Chunk } from '@/lib/api/knowledge'
 
 function similarityColor(score: number): string {
   if (score >= 0.90) return 'bg-emerald-500/10 text-emerald-400 border-transparent'
@@ -33,8 +33,9 @@ export function SearchPanel({ sourceId }: { sourceId: string }) {
     staleTime: 30_000,
   })
 
-  const results: SearchResult[] = data?.results ?? []
-  const meta = data?.meta
+  const results: Chunk[] = data?.results ?? []
+  const latency   = data?.latency_ms
+  const queryToks = data?.query_tokens
 
   function handleSearch() {
     if (!query.trim()) return
@@ -91,10 +92,10 @@ export function SearchPanel({ sourceId }: { sourceId: string }) {
       </div>
 
       {/* Meta */}
-      {meta && (
+      {data && (
         <div className="flex items-center gap-4 text-[10px] text-zinc-600">
-          {meta.latency_ms != null && <span>{meta.latency_ms.toFixed(0)} ms</span>}
-          {meta.query_tokens != null && <span>{meta.query_tokens} query tokens</span>}
+          {latency != null && <span>{latency.toFixed(0)} ms</span>}
+          {queryToks != null && <span>{queryToks} query tokens</span>}
           <span>{results.length} result{results.length !== 1 ? 's' : ''}</span>
         </div>
       )}
@@ -126,9 +127,9 @@ export function SearchPanel({ sourceId }: { sourceId: string }) {
                 <p className="text-xs text-zinc-300 leading-relaxed flex-1">{r.content}</p>
                 <Badge
                   variant="outline"
-                  className={`text-[10px] h-5 shrink-0 tabular-nums ${similarityColor(r.similarity)}`}
+                  className={`text-[10px] h-5 shrink-0 tabular-nums ${similarityColor(r.similarity ?? 0)}`}
                 >
-                  {(r.similarity * 100).toFixed(1)}%
+                  {((r.similarity ?? 0) * 100).toFixed(1)}%
                 </Badge>
               </div>
               {r.metadata && Object.keys(r.metadata).length > 0 && (

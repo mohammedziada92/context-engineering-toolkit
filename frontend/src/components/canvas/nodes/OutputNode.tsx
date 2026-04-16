@@ -6,7 +6,7 @@ import { HardDrive, Settings2 } from 'lucide-react'
 import { usePipelineStore, type OutputNodeData } from '@/stores/pipeline.store'
 
 export const OutputNode = memo(function OutputNode({ id, data, selected }: NodeProps) {
-  const d           = data as { type: 'output' } & OutputNodeData
+  const d           = data as unknown as { type: 'output' } & OutputNodeData
   const setSelected = usePipelineStore((s) => s.setSelectedNode)
 
   return (
