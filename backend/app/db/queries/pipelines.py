@@ -38,7 +38,7 @@ async def list_pipelines(
         .range(offset, offset + limit - 1)
     )
     if status:
-        q = q.eq("status", status)
+        q = q.eq("is_active", status == "active")
     if search:
         q = q.ilike("name", f"%{search}%")
 
@@ -96,7 +96,7 @@ async def create_pipeline(user_id: str, body) -> dict:
             "description":    getattr(body, "description", None),
             "canvas_state":   getattr(body, "canvas_state", {}) or {},
             "pipeline_config":getattr(body, "pipeline_config", {}) or {},
-            "status":         "draft",
+            "is_active":      False,
         })
         .execute()
     )

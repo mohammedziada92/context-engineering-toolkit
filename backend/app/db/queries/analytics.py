@@ -478,3 +478,137 @@ async def get_runs_for_export(
             "created_at": r.get("created_at", ""),
         })
     return out
+
+
+# ── Period helpers ──────────────────────────────────────────────
+
+from datetime import timedelta
+
+
+def _period_range(period: str) -> tuple[datetime, datetime]:
+    """Parse a period string ('7d', '30d', '90d') into (start, end) UTC datetimes."""
+    days = {"7d": 7, "30d": 30, "90d": 90}.get(period, 30)
+    end = datetime.now()
+    start = end - timedelta(days=days)
+    return start, end
+
+
+# ── Route-facing wrappers ───────────────────────────────────────
+
+
+async def get_analytics(user_id: str, period: str = "30d") -> dict:
+    """Aggregated analytics for the frontend AnalyticsPageContent.
+
+    Returns: { summary, daily_usage, model_breakdown, pipeline_breakdown }
+    """
+    start, end = _period_range(period)
+
+    summary_raw = await get_summary(user_id, start, end)
+
+    # Enrich summary with success/error counts and period bounds
+    client = _get_client()
+    runs_q = client.table("pipelineruns").select("status").eq("user_id", user_id)
+    runs_q = runs_q.gte("created_at", start.isoformat()).lt("created_at", end.isoformat())
+    runs_result = runs_q.execute()
+    all_runs = runs_result.data or []
+    success_count = sum(1 for r in all_runs if r.get("status") == "success")
+    error_count = sum(1 for r in all_runs if r.get("status") == "error")
+
+    summary = {
+        "total_runs": summary_raw.get("total_runs", 0),
+        "success_runs": success_count,
+        "error_runs": error_count,
+        "total_tokens": summary_raw.get("total_tokens", 0),
+        "total_cost_usd": summary_raw.get("total_cost", 0),
+        "avg_latency_ms": summary_raw.get("avg_latency_ms", 0),
+        "period_start": start.isoformat(),
+        "period_end": end.isoformat(),
+    }
+
+    # Daily usage (input_tokens/output_tokens/total_tokens per day)
+    daily_usage = await get_token_usage(user_id, start, end)
+
+    # Model breakdown
+    model_breakdown_raw = await get_cost_by_model(user_id, start, end)
+    model_breakdown = []
+    for m in model_breakdown_raw:
+        model_breakdown.append({
+            "model": m["model"],
+            "run_count": m["runs"],
+            "total_tokens": 0,  # not aggregated per model in current query
+            "cost_usd": round(m["cost"], 6),
+            "avg_latency_ms": 0,
+            "error_rate": 0,
+        })
+
+    # Pipeline breakdown
+    pipeline_breakdown_raw = await get_runs_by_pipeline(user_id, start, end)
+    pipeline_breakdown = []
+    for p in pipeline_breakdown_raw:
+        pipeline_breakdown.append({
+            "pipeline_id": p.get("id", ""),
+            "pipeline_name": p.get("pipeline", "Unknown"),
+            "run_count": p["runs"],
+            "total_tokens": 0,
+            "cost_usd": round(p.get("cost", 0), 6),
+            "success_rate": 0,
+            "avg_latency_ms": 0,
+        })
+
+    return {
+        "summary": summary,
+        "daily_usage": daily_usage,
+        "model_breakdown": model_breakdown,
+        "pipeline_breakdown": pipeline_breakdown,
+    }
+
+
+async def list_runs(
+    user_id: str,
+    page: int = 1,
+    limit: int = 20,
+    pipeline_id: str | None = None,
+    model: str | None = None,
+    status: str | None = None,
+    period: str = "30d",
+) -> dict:
+    """Paginated run history matching the frontend RunsResponse shape.
+
+    Returns: { items: [...], total, page, limit }
+    """
+    start, end = _period_range(period)
+
+    raw = await get_runs(
+        user_id=user_id,
+        page=page,
+        page_size=limit,
+        pipeline_id=pipeline_id,
+        model_id=model,
+        status=status,
+        date_from=start.isoformat(),
+        date_to=end.isoformat(),
+    )
+
+    # Transform each run to match frontend RunRecord shape
+    items = []
+    for r in raw.get("runs", []):
+        items.append({
+            "id": r.get("id", ""),
+            "pipeline_id": r.get("pipeline_id", ""),
+            "pipeline_name": r.get("pipeline_name", ""),
+            "model": r.get("model_used", ""),
+            "status": r.get("status", "success"),
+            "input_tokens": r.get("prompt_tokens", 0),
+            "output_tokens": r.get("completion_tokens", 0),
+            "total_tokens": r.get("total_tokens", 0),
+            "cost_usd": round(float(r.get("cost_usd") or 0), 6),
+            "latency_ms": r.get("latency_ms", 0),
+            "created_at": r.get("created_at", ""),
+        })
+
+    return {
+        "items": items,
+        "total": raw.get("total", 0),
+        "page": page,
+        "limit": limit,
+    }

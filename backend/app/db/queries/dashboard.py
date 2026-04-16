@@ -87,3 +87,64 @@ async def get_stats(user_id: str) -> dict:
         "pipeline_count": pipeline_count,
         "run_count": run_count,
     }
+
+
+async def get_dashboard(user_id: str) -> dict:
+    """Single aggregated response for the dashboard page.
+
+    Returns: { stats, recent_runs, recent_pipelines, recent_sources }
+    """
+    client = _get_client()
+
+    # Stats
+    stats = await get_stats(user_id)
+
+    # Recent runs — last 5 with pipeline name
+    runs_result = (
+        client.table("pipelineruns")
+        .select(
+            "id, pipeline_id, user_message, llm_response, model_used, "
+            "total_tokens, cost_usd, latency_ms, status, created_at, "
+            "pipelines!pipelineruns_pipeline_id_fkey(name)"
+        )
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(5)
+        .execute()
+    )
+    recent_runs = []
+    for row in runs_result.data or []:
+        pipeline_info = row.pop("pipelines", None)
+        row["pipeline_name"] = pipeline_info["name"] if pipeline_info else None
+        if row["pipeline_id"] is None:
+            row["pipeline_name"] = "Playground"
+        recent_runs.append(row)
+
+    # Recent pipelines — last 3
+    pipelines_result = (
+        client.table("pipelines")
+        .select("id, name, description, is_active, model, updated_at, created_at")
+        .eq("user_id", user_id)
+        .order("updated_at", desc=True)
+        .limit(3)
+        .execute()
+    )
+    recent_pipelines = pipelines_result.data or []
+
+    # Recent knowledge sources — last 3
+    sources_result = (
+        client.table("knowledgesources")
+        .select("id, name, type, status, total_chunks, updated_at, created_at")
+        .eq("user_id", user_id)
+        .order("updated_at", desc=True)
+        .limit(3)
+        .execute()
+    )
+    recent_sources = sources_result.data or []
+
+    return {
+        "stats": stats,
+        "recent_runs": recent_runs,
+        "recent_pipelines": recent_pipelines,
+        "recent_sources": recent_sources,
+    }
