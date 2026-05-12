@@ -1,6 +1,6 @@
 import time
 import math
-from yarl import URL
+import re
 from supabase import create_client, Client
 
 from app.core.config import settings
@@ -9,7 +9,6 @@ from app.core.config import settings
 def _get_client() -> Client:
     """Create a Supabase client with the service role key (bypasses RLS)."""
     client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-    client.postgrest.base_url = URL(settings.SUPABASE_URL)
     return client
 
 
@@ -17,6 +16,18 @@ def _get_client() -> Client:
 
 CHUNK_SIZE = 500      # characters per chunk
 CHUNK_OVERLAP = 50    # overlap between consecutive chunks
+
+
+def _get_wikipedia_api_url(url: str) -> str | None:
+    """Convert a Wikipedia article URL to the REST API endpoint."""
+    match = re.match(
+        r'https?://([a-z]{2,3})\.wikipedia\.org/wiki/(.+)', url
+    )
+    if match:
+        lang = match.group(1)
+        title = match.group(2)
+        return f"https://{lang}.wikipedia.org/api/rest_v1/page/html/{title}"
+    return None
 
 
 def _split_text(text: str) -> list[str]:
@@ -47,7 +58,7 @@ async def list_knowledge_sources(
     offset = (page - 1) * limit
 
     q = (
-        client.table("knowledgesources")
+        client.table("knowledge_sources")
         .select("*", count="exact")
         .eq("user_id", user_id)
         .order("created_at", desc=True)
@@ -61,7 +72,7 @@ async def list_knowledge_sources(
     result = q.execute()
     items = result.data or []
 
-    # Enrich each source with chunk_count
+    # Enrich each source with chunk_count + document_count
     for item in items:
         rc = (
             client.table("chunks")
@@ -70,6 +81,7 @@ async def list_knowledge_sources(
             .execute()
         )
         item["chunk_count"] = rc.count or 0
+        item["document_count"] = 1 if rc.count else 0
 
     return {
         "items": items,
@@ -97,7 +109,7 @@ async def create_knowledge_source(
     }
     if description:
         insert["description"] = description
-    result = client.table("knowledgesources").insert(insert).execute()
+    result = client.table("knowledge_sources").insert(insert).execute()
     return result.data[0]
 
 
@@ -105,7 +117,7 @@ async def get_knowledge_source(source_id: str, user_id: str) -> dict | None:
     """Return a single knowledge source enriched with chunk_count."""
     client = _get_client()
     result = (
-        client.table("knowledgesources")
+        client.table("knowledge_sources")
         .select("*")
         .eq("id", source_id)
         .eq("user_id", user_id)
@@ -116,7 +128,7 @@ async def get_knowledge_source(source_id: str, user_id: str) -> dict | None:
         return None
     source = result.data
 
-    # Enrich with chunk count
+    # Enrich with chunk count + document count
     rc = (
         client.table("chunks")
         .select("id", count="exact")
@@ -124,6 +136,7 @@ async def get_knowledge_source(source_id: str, user_id: str) -> dict | None:
         .execute()
     )
     source["chunk_count"] = rc.count or 0
+    source["document_count"] = 1 if rc.count else 0
     return source
 
 
@@ -133,7 +146,7 @@ async def update_knowledge_source(
     """Update name/description. Returns updated row."""
     client = _get_client()
     result = (
-        client.table("knowledgesources")
+        client.table("knowledge_sources")
         .update(updates)
         .eq("id", source_id)
         .eq("user_id", user_id)
@@ -145,7 +158,7 @@ async def update_knowledge_source(
 async def delete_knowledge_source(source_id: str, user_id: str) -> None:
     """Delete a knowledge source. Cascades chunks via FK ON DELETE CASCADE."""
     client = _get_client()
-    client.table("knowledgesources").delete().eq("id", source_id).eq("user_id", user_id).execute()
+    client.table("knowledge_sources").delete().eq("id", source_id).eq("user_id", user_id).execute()
 
 
 # ── Chunks CRUD ─────────────────────────────────────────────────
@@ -195,7 +208,7 @@ async def delete_chunk(source_id: str, chunk_id: str, user_id: str) -> None:
 
     # Decrement source total_chunks
     source = (
-        client.table("knowledgesources")
+        client.table("knowledge_sources")
         .select("total_chunks")
         .eq("id", source_id)
         .single()
@@ -203,7 +216,7 @@ async def delete_chunk(source_id: str, chunk_id: str, user_id: str) -> None:
     )
     if source.data:
         new_count = max(0, (source.data.get("total_chunks") or 0) - 1)
-        client.table("knowledgesources").update({"total_chunks": new_count}).eq("id", source_id).execute()
+        client.table("knowledge_sources").update({"total_chunks": new_count}).eq("id", source_id).execute()
 
 
 # ── Ingestion ───────────────────────────────────────────────────
@@ -239,7 +252,7 @@ async def _ingest_chunks(source_id: str, user_id: str, text_chunks: list[str]) -
         client.table("chunks").insert(rows[i : i + batch_size]).execute()
 
     # Update source: set total_chunks + status=ready
-    client.table("knowledgesources").update({
+    client.table("knowledge_sources").update({
         "total_chunks": len(rows),
         "status": "ready",
     }).eq("id", source_id).execute()
@@ -253,7 +266,7 @@ async def queue_ingest_text(
 
     # Set status to processing
     source = (
-        client.table("knowledgesources")
+        client.table("knowledge_sources")
         .select("user_id")
         .eq("id", source_id)
         .single()
@@ -261,7 +274,10 @@ async def queue_ingest_text(
     )
     user_id = source.data["user_id"]
 
-    client.table("knowledgesources").update({"status": "processing"}).eq("id", source_id).execute()
+    client.table("knowledge_sources").update({
+        "status": "processing",
+        "error_message": None,
+    }).eq("id", source_id).execute()
 
     # Split and ingest
     chunks = _split_text(content)
@@ -277,7 +293,7 @@ async def queue_ingest_file(
     client = _get_client()
 
     source = (
-        client.table("knowledgesources")
+        client.table("knowledge_sources")
         .select("user_id")
         .eq("id", source_id)
         .single()
@@ -285,9 +301,10 @@ async def queue_ingest_file(
     )
     user_id = source.data["user_id"]
 
-    client.table("knowledgesources").update({"status": "processing"}).eq("id", source_id).execute()
-
-    # Extract text based on file type
+    client.table("knowledge_sources").update({
+        "status": "processing",
+        "error_message": None,
+    }).eq("id", source_id).execute()
     text: str
     if content_type and "pdf" in content_type:
         try:
@@ -303,7 +320,7 @@ async def queue_ingest_file(
     # Update source type to reflect actual file type
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "txt"
     source_type = ext if ext in ("pdf", "txt") else "txt"
-    client.table("knowledgesources").update({"type": source_type}).eq("id", source_id).execute()
+    client.table("knowledge_sources").update({"type": source_type}).eq("id", source_id).execute()
 
     # Split and ingest
     chunks = _split_text(text)
@@ -317,11 +334,17 @@ async def queue_ingest_url(
 ) -> str:
     """Ingest a URL: fetch → extract text → split → embed → store chunks."""
     import httpx
+    import logging
+    from bs4 import BeautifulSoup
 
+    logger = logging.getLogger(__name__)
+    print(f"[DEBUG] ingest_url called with url={url}")
+    wiki_check = _get_wikipedia_api_url(str(url))
+    print(f"[DEBUG] wiki_api_url={wiki_check}")
     client = _get_client()
 
     source = (
-        client.table("knowledgesources")
+        client.table("knowledge_sources")
         .select("user_id")
         .eq("id", source_id)
         .single()
@@ -329,38 +352,56 @@ async def queue_ingest_url(
     )
     user_id = source.data["user_id"]
 
-    client.table("knowledgesources").update({
+    client.table("knowledge_sources").update({
         "status": "processing",
+        "error_message": None,
         "source_url": url,
         "type": "url",
     }).eq("id", source_id).execute()
 
-    # Fetch URL content
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
-            resp = await http.get(url)
+        # Use Wikipedia REST API for Wikipedia URLs (avoids 403 bot-blocking)
+        fetch_url = _get_wikipedia_api_url(url) or url
+        logger.info(f"Fetching URL: original={url}, fetch={fetch_url}")
+
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            headers={
+                "User-Agent": "CET-Bot/1.0 (context-engineering-toolkit; +https://github.com/context-engineering-toolkit)",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+            },
+            timeout=30,
+        ) as http:
+            resp = await http.get(fetch_url)
             resp.raise_for_status()
-            text = resp.text
-    except Exception as e:
-        client.table("knowledgesources").update({
-            "status": "error",
-            "error_message": f"Failed to fetch URL: {e}",
-        }).eq("id", source_id).execute()
-        return f"ingest-url-{source_id}"
+            raw = resp.text
 
-    # Basic HTML stripping if it looks like HTML
-    if "<" in text and ">" in text:
-        import re
-        text = re.sub(r"<[^>]+>", " ", text)
-        text = re.sub(r"\s+", " ", text).strip()
+        # Extract clean text with BeautifulSoup
+        if "<" in raw and ">" in raw:
+            soup = BeautifulSoup(raw, "lxml")
+            for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                tag.decompose()
+            text = soup.get_text(separator="\n", strip=True)
+        else:
+            text = raw
 
-    chunks = _split_text(text)
-    if chunks:
+        chunks = _split_text(text)
+        if not chunks:
+            client.table("knowledge_sources").update({
+                "status": "error",
+                "error_message": "No extractable text content from URL",
+            }).eq("id", source_id).execute()
+            return f"ingest-url-{source_id}"
+
         await _ingest_chunks(source_id, user_id, chunks)
-    else:
-        client.table("knowledgesources").update({
+    except Exception as e:
+        logger.error(f"URL ingestion failed for {url}: {e}", exc_info=True)
+        client.table("knowledge_sources").update({
             "status": "error",
-            "error_message": "No extractable text content from URL",
+            "error_message": f"URL ingestion failed: {e}",
         }).eq("id", source_id).execute()
 
     return f"ingest-url-{source_id}"
@@ -385,7 +426,7 @@ async def search_chunks(
 
     # Get source to find user_id for the RPC call
     source = (
-        client.table("knowledgesources")
+        client.table("knowledge_sources")
         .select("user_id")
         .eq("id", source_id)
         .single()

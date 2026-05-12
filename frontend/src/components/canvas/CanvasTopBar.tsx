@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Save, Play, Loader2, MoreHorizontal, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ChevronLeft, Save, Play, Loader2, MoreHorizontal, AlertTriangle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input }  from '@/components/ui/input'
 import { Badge }  from '@/components/ui/badge'
@@ -19,23 +19,27 @@ interface Props {
   onDuplicate: () => void
   onDelete:    () => void
   onExport:    () => void
+  onNameChange?: (name: string) => Promise<void>
   showHistory?: boolean
 }
 
 export function CanvasTopBar({
-  onSave, onRun, onDuplicate, onDelete, onExport, showHistory,
+  onSave, onRun, onDuplicate, onDelete, onExport, onNameChange, showHistory,
 }: Props) {
   const router = useRouter()
-  const {
-    pipelineName, setPipelineName,
-    status, isDirty, isSaving,
-    nodes, edges,
-  } = usePipelineStore((s) => s)
+  const pipelineName    = usePipelineStore((s) => s.pipelineName)
+  const setPipelineName = usePipelineStore((s) => s.setPipelineName)
+  const status          = usePipelineStore((s) => s.status)
+  const isDirty         = usePipelineStore((s) => s.isDirty)
+  const isSaving        = usePipelineStore((s) => s.isSaving)
+  const nodes           = usePipelineStore((s) => s.nodes)
+  const edges           = usePipelineStore((s) => s.edges)
 
   const [editingName, setEditingName] = useState(false)
+  const [draftName, setDraftName] = useState(pipelineName)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { if (editingName) inputRef.current?.select() }, [editingName])
+  useEffect(() => { if (editingName) { setDraftName(pipelineName); inputRef.current?.select() } }, [editingName, pipelineName])
 
   // Ctrl+S / Cmd+S save
   useEffect(() => {
@@ -50,19 +54,28 @@ export function CanvasTopBar({
   }, [onSave])
 
   function handleRunClick() {
-    const errors = validatePipeline(nodes, edges)
-    if (errors.length > 0) {
-      toast.error(errors[0], { description: errors.slice(1).join(', ') || undefined })
-      return
+    const issues = validatePipeline(nodes, edges)
+    if (issues.length > 0) {
+      const hasErrors = issues.some((i) => i.severity === 'error')
+
+      // Show each issue as a separate toast with its severity icon
+      for (const issue of issues) {
+        const icon = issue.severity === 'error'
+          ? <XCircle className="h-4 w-4 text-red-400 shrink-0" />
+          : <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+
+        if (issue.severity === 'error') {
+          toast.error(issue.message, { icon })
+        } else {
+          toast.warning(issue.message, { icon })
+        }
+      }
+
+      // Only block run if there are errors
+      if (hasErrors) return
     }
     onRun()
   }
-
-  const SaveIcon = isSaving
-    ? Loader2
-    : isDirty
-    ? AlertCircle
-    : CheckCircle2
 
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 border-b border-zinc-800 bg-zinc-950">
@@ -85,9 +98,15 @@ export function CanvasTopBar({
       {editingName ? (
         <Input
           ref={inputRef}
-          defaultValue={pipelineName}
+          value={draftName}
+          onChange={(e) => setDraftName(e.target.value)}
           className="h-7 w-56 bg-zinc-900 border-zinc-700 text-zinc-100 text-sm px-2"
-          onBlur={(e) => { setPipelineName(e.target.value || 'Untitled Pipeline'); setEditingName(false) }}
+          onBlur={() => {
+            const newName = draftName || 'Untitled Pipeline'
+            setPipelineName(newName)
+            setEditingName(false)
+            if (onNameChange) onNameChange(newName)
+          }}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
         />
       ) : (
@@ -123,11 +142,11 @@ export function CanvasTopBar({
       <Button
         variant="outline"
         size="sm"
-        className="h-7 text-xs border-zinc-700 text-zinc-300 hover:bg-zinc-800 gap-1.5"
+        className="h-7 text-xs border-zinc-600 text-zinc-200 hover:bg-zinc-700 hover:text-white gap-1.5 disabled:opacity-40"
         onClick={onSave}
-        disabled={isSaving}
+        disabled={!isDirty || isSaving}
       >
-        <SaveIcon className={`h-3.5 w-3.5 ${isSaving ? 'animate-spin' : ''}`} />
+        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
         {isSaving ? 'Saving…' : 'Save'}
       </Button>
 
@@ -143,10 +162,10 @@ export function CanvasTopBar({
 
       {/* More menu */}
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-zinc-200">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+        <DropdownMenuTrigger
+          className="inline-flex items-center justify-center h-7 w-7 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+        >
+          <MoreHorizontal className="h-4 w-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800 text-zinc-200 w-44">
           <DropdownMenuItem onClick={onDuplicate} className="gap-2 cursor-pointer hover:bg-zinc-800">

@@ -79,7 +79,7 @@ export function RecentSourcesCard({ sources, loading }: Props) {
                 <div className="flex items-center gap-3 text-[10px] text-zinc-600">
                   <span className="flex items-center gap-1">
                     <Layers className="h-2.5 w-2.5" />
-                    {s.chunk_count.toLocaleString()} chunks
+                    {(s.chunk_count ?? 0).toLocaleString()} chunks
                   </span>
                   <span>{formatDistanceToNow(new Date(s.updated_at), { addSuffix: true })}</span>
                 </div>

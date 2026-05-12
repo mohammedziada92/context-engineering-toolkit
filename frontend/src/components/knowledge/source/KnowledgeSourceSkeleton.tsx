@@ -1,6 +1,6 @@
 export function KnowledgeSourceSkeleton() {
   return (
-    <div className="flex flex-col h-full overflow-hidden animate-pulse">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden animate-pulse">
       {/* Top bar */}
       <div className="flex items-center gap-3 px-6 py-4 border-b border-zinc-800">
         <div className="h-7 w-7 rounded bg-zinc-800" />

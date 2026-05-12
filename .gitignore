@@ -1,29 +1,97 @@
-# Environment files
+# ============================================================
+# CET — .gitignore
+# Public repo: github.com/mohammedziada92/context-engineering-toolkit
+# Solo project — no team sharing needed
+# ============================================================
+
+# ─── SECRETS (CRITICAL — public repo) ───────────────────────
+backend/.env
+backend/.env.*
+frontend/.env.local
+frontend/.env.*
 .env
-.env.local
-.env.production
-*.env
+.env.*
+!backend/.env.example
+!frontend/.env.example
+!.env.example
 
-# Dependencies
-node_modules/
+# ─── CLAUDE CODE — ignore everything ────────────────────────
+.claude/
+CLAUDE.local.md
+
+# ─── PYTHON / FASTAPI ────────────────────────────────────────
 __pycache__/
-*.pyc
-.venv/
-venv/
-
-# Build outputs
-.next/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
 dist/
 build/
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 
-# IDE
-.vscode/
-.idea/
+# ─── NEXT.JS / NODE ──────────────────────────────────────────
+node_modules/
+frontend/.next/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+.eslintcache
 
-# OS
+# ─── DOCKER ──────────────────────────────────────────────────
+docker-compose.override.yml
+docker-compose.local.yml
+docker/volumes/
+docker/pgdata/
+
+# ─── SUPABASE ────────────────────────────────────────────────
+supabase/.branches/
+supabase/.temp/
+.supabase/
+
+# ─── CREDENTIALS ─────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+service-account*.json
+*-credentials.json
+secrets/
+
+# ─── UPLOADS / TEMP ──────────────────────────────────────────
+uploads/
+tmp/
+temp/
+*.tmp
+storage/
+
+# ─── LOGS ────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+pip-log.txt
+
+# ─── OS / EDITOR ─────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+.vscode/launch.json
+.idea/
+*.swp
+*~
 
-# Docker volumes
-postgres-data/
-storage-data/
+# ─── DEPLOYMENT ──────────────────────────────────────────────
+.vercel
+.netlify
+.railway/
+*.tfstate
+.terraform/

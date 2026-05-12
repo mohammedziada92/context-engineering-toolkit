@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from loguru import logger
 from supabase import create_client, Client
-from yarl import URL
 
 from app.core.config import settings
 from app.db.queries import playground as playground_db
@@ -36,7 +35,6 @@ def _sse(event: dict) -> str:
 def _get_supabase() -> Client:
     """Create a Supabase client with the service role key."""
     client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-    client.postgrest.base_url = URL(settings.SUPABASE_URL)
     return client
 
 
@@ -179,7 +177,7 @@ async def list_sessions(
     for row in rows:
         count_result = (
             _get_supabase()
-            .table("chatmessages")
+            .table("chat_messages")
             .select("id", count="exact")
             .eq("session_id", row["id"])
             .execute()
@@ -255,7 +253,7 @@ async def patch_session(
 # ── DELETE /api/v1/playground/sessions/{session_id} ─────────────
 
 
-@router.delete("/sessions/{session_id}", status_code=204)
+@router.delete("/sessions/{session_id}")
 async def remove_session(
     session_id: str,
     user: dict = Depends(get_current_user),
@@ -264,6 +262,7 @@ async def remove_session(
     deleted = await playground_db.delete_session(session_id, user["sub"])
     if not deleted:
         raise HTTPException(status_code=404, detail="Session not found")
+    return {"deleted": True}
 
 
 # ── DELETE /api/v1/playground/sessions ──────────────────────────
@@ -305,6 +304,7 @@ async def chat_stream(
 
     # Resolve or create session
     session_id = body.session_id
+    session_pipeline_id: str | None = None
     if not session_id:
         session = await playground_db.create_session(
             user_id=user_id,
@@ -322,10 +322,12 @@ async def chat_stream(
             },
         )
         session_id = session["id"]
+        session_pipeline_id = session.get("pipeline_id")
     else:
         session = await playground_db.get_session_by_id(session_id, user_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
+        session_pipeline_id = session.get("pipeline_id")
 
     # Persist user message
     await playground_db.create_message(
@@ -351,6 +353,7 @@ async def chat_stream(
                 top_k=body.top_k,
                 threshold=body.threshold,
                 user_id=user_id,
+                api_key=api_key,
             )
             if retrieved_chunks:
                 context_text = "\n\n".join(c["content"] for c in retrieved_chunks)
@@ -413,6 +416,7 @@ async def chat_stream(
                 latency_ms=latency_ms,
                 status="error",
                 error_message=str(e),
+                pipeline_id=session_pipeline_id,
             )
             yield _sse({"status": "error", "error": str(e)})
             return
@@ -444,6 +448,7 @@ async def chat_stream(
             cost_usd=cost_usd,
             latency_ms=latency_ms,
             status="success",
+            pipeline_id=session_pipeline_id,
         )
 
         yield _sse({
@@ -538,12 +543,13 @@ async def _log_playground_run(
     latency_ms: int,
     status: str,
     error_message: str | None = None,
+    pipeline_id: str | None = None,
 ) -> None:
-    """Insert a playground run into pipelineruns with pipeline_id=NULL."""
+    """Insert a playground run into pipelineruns."""
     client = _get_supabase()
-    client.table("pipelineruns").insert({
+    client.table("pipeline_runs").insert({
         "id": str(uuid.uuid4()),
-        "pipeline_id": None,
+        "pipeline_id": pipeline_id,
         "user_id": user_id,
         "user_message": user_message,
         "llm_response": llm_response,

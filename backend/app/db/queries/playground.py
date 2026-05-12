@@ -1,4 +1,3 @@
-from yarl import URL
 from supabase import create_client, Client
 
 from app.core.config import settings
@@ -7,7 +6,6 @@ from app.core.config import settings
 def _get_client() -> Client:
     """Create a Supabase client with the service role key (bypasses RLS)."""
     client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-    client.postgrest.base_url = URL(settings.SUPABASE_URL)
     return client
 
 
@@ -31,7 +29,7 @@ async def create_session(
     }
     if pipeline_id:
         insert["pipeline_id"] = pipeline_id
-    result = client.table("chatsessions").insert(insert).execute()
+    result = client.table("chat_sessions").insert(insert).execute()
     return result.data[0]
 
 
@@ -39,7 +37,7 @@ async def get_sessions_by_user(user_id: str) -> list[dict]:
     """Return all chat sessions for a user, most recently updated first."""
     client = _get_client()
     result = (
-        client.table("chatsessions")
+        client.table("chat_sessions")
         .select("*")
         .eq("user_id", user_id)
         .order("updated_at", desc=True)
@@ -52,7 +50,7 @@ async def get_session_by_id(session_id: str, user_id: str) -> dict | None:
     """Return a single chat session if owned by user."""
     client = _get_client()
     result = (
-        client.table("chatsessions")
+        client.table("chat_sessions")
         .select("*")
         .eq("id", session_id)
         .eq("user_id", user_id)
@@ -72,7 +70,7 @@ async def get_session_with_messages(session_id: str, user_id: str) -> dict | Non
         return None
     # Fetch messages
     msgs = (
-        client.table("chatmessages")
+        client.table("chat_messages")
         .select("*")
         .eq("session_id", session_id)
         .eq("user_id", user_id)
@@ -91,7 +89,7 @@ async def update_session(
     """Update session fields. Returns updated row or None."""
     client = _get_client()
     result = (
-        client.table("chatsessions")
+        client.table("chat_sessions")
         .update(updates)
         .eq("id", session_id)
         .eq("user_id", user_id)
@@ -106,8 +104,8 @@ async def delete_session(session_id: str, user_id: str) -> bool:
     """Delete a session and its messages. Returns True if deleted."""
     client = _get_client()
     # Delete messages first (FK constraint)
-    client.table("chatmessages").delete().eq("session_id", session_id).eq("user_id", user_id).execute()
-    result = client.table("chatsessions").delete().eq("id", session_id).eq("user_id", user_id).execute()
+    client.table("chat_messages").delete().eq("session_id", session_id).eq("user_id", user_id).execute()
+    result = client.table("chat_sessions").delete().eq("id", session_id).eq("user_id", user_id).execute()
     return len(result.data) > 0
 
 
@@ -116,16 +114,16 @@ async def delete_all_sessions(user_id: str) -> int:
     client = _get_client()
     # Delete all messages for user's sessions
     sessions = (
-        client.table("chatsessions")
+        client.table("chat_sessions")
         .select("id")
         .eq("user_id", user_id)
         .execute()
     )
     if sessions.data:
         ids = [s["id"] for s in sessions.data]
-        client.table("chatmessages").delete().in_("session_id", ids).execute()
+        client.table("chat_messages").delete().in_("session_id", ids).execute()
     # Delete all sessions
-    result = client.table("chatsessions").delete().eq("user_id", user_id).execute()
+    result = client.table("chat_sessions").delete().eq("user_id", user_id).execute()
     return len(result.data)
 
 
@@ -149,7 +147,7 @@ async def create_message(
     }
     if retrieved_chunks:
         insert["retrieved_chunks"] = retrieved_chunks
-    result = client.table("chatmessages").insert(insert).execute()
+    result = client.table("chat_messages").insert(insert).execute()
     return result.data[0]
 
 
@@ -157,7 +155,7 @@ async def get_messages_by_session(session_id: str, user_id: str) -> list[dict]:
     """Return all messages for a session, oldest first."""
     client = _get_client()
     result = (
-        client.table("chatmessages")
+        client.table("chat_messages")
         .select("*")
         .eq("session_id", session_id)
         .eq("user_id", user_id)

@@ -49,8 +49,10 @@ export function DangerZone() {
         <AlertDialogContent className="bg-zinc-900 border-zinc-700 max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-zinc-100">Delete Account?</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400 text-sm space-y-2">
-              <span className="block">This will permanently delete:</span>
+            <div className="space-y-2">
+              <AlertDialogDescription className="text-zinc-400 text-sm">
+                This will permanently delete:
+              </AlertDialogDescription>
               <ul className="list-disc list-inside space-y-1 text-zinc-500 text-xs">
                 <li>Your profile and settings</li>
                 <li>All your pipelines and version history</li>
@@ -62,7 +64,7 @@ export function DangerZone() {
               <span className="block mt-2 text-red-400 text-xs font-medium">
                 This action cannot be undone.
               </span>
-            </AlertDialogDescription>
+            </div>
           </AlertDialogHeader>
 
           <div className="px-1 py-2">

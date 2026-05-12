@@ -66,11 +66,11 @@ export function RecentRunsCard({ runs, loading }: Props) {
                     {run.pipeline_name}
                   </p>
                   <p className="text-[10px] text-zinc-600">
-                    {modelShortname(run.model)} · {formatTokens(run.total_tokens)} · {formatCost(run.cost_usd)}
+                    {modelShortname(run.model)} · {run.total_tokens != null ? formatTokens(run.total_tokens) : '—'} · {run.cost_usd != null ? formatCost(run.cost_usd) : '—'}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] text-zinc-500">{formatLatency(run.latency_ms)}</p>
+                  <p className="text-[10px] text-zinc-500">{run.latency_ms != null ? formatLatency(run.latency_ms) : '—'}</p>
                   <p className="text-[10px] text-zinc-700">
                     {formatDistanceToNow(new Date(run.created_at), { addSuffix: true })}
                   </p>

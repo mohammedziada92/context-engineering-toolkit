@@ -24,7 +24,12 @@ async def validate_key(
     user: dict = Depends(get_current_user),
 ):
     """Validate an OpenRouter API key without saving it."""
-    result = await vault_service.validate_openrouter_key(body.api_key)
+    key = body.api_key
+    if key == "existing":
+        key = await vault_service.get_decrypted_key(user["sub"])
+        if not key:
+            return ValidateKeyResponse(valid=False, error="No stored API key")
+    result = await vault_service.validate_openrouter_key(key)
     return ValidateKeyResponse(**result)
 
 
@@ -57,8 +62,11 @@ async def get_settings_route(
     """Get settings — key always returned masked."""
     row = await vault_service.get_settings(user["sub"])
     if not row:
-        raise HTTPException(status_code=404, detail="Settings not found. Save an API key first.")
-    row["openrouter_api_key"] = "sk-or-masked"
+        # First-time user — upsert a row with defaults
+        from app.core.config import settings as app_settings
+        await vault_service.save_api_key(user["sub"], "", app_settings.MODEL_QUALITY)
+        row = await vault_service.get_settings(user["sub"])
+    row["openrouter_api_key"] = "sk-or-masked" if row.get("openrouter_api_key") else None
     return SettingsResponse(**row)
 
 
@@ -93,7 +101,7 @@ async def update_model(
 
 @router.get("/profile")
 async def get_profile(user: dict = Depends(get_current_user)):
-    return await db.get_profile(user["sub"])
+    return await db.get_profile(user["sub"], user)
 
 
 @router.put("/profile")
@@ -119,19 +127,34 @@ async def update_preferences(body: PreferencesUpdate, user: dict = Depends(get_c
 # ── Avatar ───────────────────────────────────────────────────────
 
 
+MAX_AVATAR_BYTES = 2 * 1024 * 1024  # 2 MB
+ALLOWED_AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
 @router.post("/avatar")
 async def upload_avatar(file: UploadFile, user: dict = Depends(get_current_user)):
+    if file.content_type not in ALLOWED_AVATAR_TYPES:
+        raise HTTPException(status_code=400, detail="File must be JPEG, PNG, WebP, or GIF")
     contents = await file.read()
-    # Store avatar in Supabase Storage
-    from supabase import create_client
-    from yarl import URL as YarlURL
-    client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-    client.postgrest.base_url = YarlURL(settings.SUPABASE_URL)
-    path = f"avatars/{user['sub']}"
-    client.storage.from_("avatars").upload(path, contents, {"content-type": file.content_type or "image/webp", "upsert": "true"})
-    url = client.storage.from_("avatars").get_public_url(path)
-    await db.update_avatar(user["sub"], url)
-    return {"avatar_url": url}
+    if len(contents) > MAX_AVATAR_BYTES:
+        raise HTTPException(status_code=400, detail="File too large (max 2 MB)")
+    try:
+        from supabase import create_client
+        client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+        try:
+            client.storage.create_bucket("Avatars", {"public": True})
+        except Exception:
+            pass
+        path = f"{user['sub']}"
+        client.storage.from_("Avatars").upload(path, contents, {"content-type": file.content_type, "upsert": "true"})
+        url = client.storage.from_("Avatars").get_public_url(path)
+        await db.update_avatar(user["sub"], url)
+        # Sync avatar to Supabase Auth user_metadata — use a fresh client
+        auth_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+        auth_client.auth.admin.update_user_by_id(user["sub"], {"user_metadata": {"avatar_url": url}})
+        return {"avatar_url": url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Avatar upload failed: {str(e)}")
 
 
 # ── Usage ────────────────────────────────────────────────────────
@@ -142,24 +165,25 @@ async def get_usage(user: dict = Depends(get_current_user)):
     """Fetch credit balance from OpenRouter. Cached 1hr server-side."""
     api_key = await vault_service.get_decrypted_key(user["sub"])
     if not api_key:
-        raise HTTPException(403, "No API key configured")
-    # TODO: implement openrouter_service.get_usage for live balance
-    return {
-        "spent_usd": 0.0,
-        "remaining_usd": 0.0,
-        "total_usd": 0.0,
-        "pct_used": 0,
-        "by_model": [],
-        "cached_at": "",
-    }
+        return {
+            "spent_usd": 0.0,
+            "remaining_usd": 0.0,
+            "total_usd": 0.0,
+            "pct_used": 0,
+            "by_model": [],
+            "cached_at": "",
+        }
 
 
 # ── Account deletion ─────────────────────────────────────────────
 
 
-@router.delete("/account", status_code=204)
+@router.delete("/account")
 async def delete_account(user: dict = Depends(get_current_user)):
     """Cascade delete all user data then remove auth user."""
     await db.cascade_delete_user(user["sub"])
-    # supabase.auth.admin.delete_user(user["sub"])
-    return
+    # Delete the Supabase Auth user last
+    from supabase import create_client
+    client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+    client.auth.admin.delete_user(user["sub"])
+    return {"deleted": True}

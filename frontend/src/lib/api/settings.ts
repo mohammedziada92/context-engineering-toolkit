@@ -71,26 +71,26 @@ export const uploadAvatar = (file: File): Promise<{ avatar_url: string }> => {
 export const validateKey = (key: string): Promise<ValidateKeyResponse> =>
   apiFetch('/api/v1/settings/validate-key', {
     method: 'POST',
-    body: JSON.stringify({ openrouter_api_key: key }),
+    body: JSON.stringify({ api_key: key }),
   })
 
 export const saveKey = (key: string, default_model: string): Promise<void> =>
-  apiFetch('/api/v1/settings', {
+  apiFetch('/api/v1/settings/api-key', {
     method: 'PUT',
-    body: JSON.stringify({ openrouter_api_key: key, default_model }),
+    body: JSON.stringify({ api_key: key }),
   })
 
 export const removeKey = (): Promise<void> =>
   apiFetch('/api/v1/settings/api-key', { method: 'DELETE' })
 
 export const updateDefaultModel = (model: string): Promise<void> =>
-  apiFetch('/api/v1/settings', {
+  apiFetch('/api/v1/settings/model', {
     method: 'PUT',
     body: JSON.stringify({ default_model: model }),
   })
 
 export const deleteAccount = (): Promise<void> =>
-  apiFetch('/api/v1/account', { method: 'DELETE' })
+  apiFetch('/api/v1/settings/account', { method: 'DELETE' })
 
 export const notifyProInterest = (email: string): Promise<void> =>
   apiFetch('/api/v1/billing/notify-interest', {

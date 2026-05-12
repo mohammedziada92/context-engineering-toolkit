@@ -21,16 +21,18 @@ export function KnowledgeDeleteDialog({ source, deleting, onConfirm, onCancel }:
       <AlertDialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-sm">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-base">Delete &quot;{source.name}&quot;?</AlertDialogTitle>
-          <AlertDialogDescription className="text-zinc-400 text-sm space-y-2">
-            <span className="block">This will permanently delete:</span>
+          <div className="text-zinc-400 text-sm space-y-2">
+            <AlertDialogDescription className="block">
+              This will permanently delete:
+            </AlertDialogDescription>
             <ul className="list-disc list-inside text-xs space-y-1 text-zinc-500">
-              <li>All {source.chunk_count.toLocaleString()} stored chunks</li>
-              <li>All {source.document_count.toLocaleString()} ingested documents</li>
+              <li>All {(source.chunk_count ?? 0).toLocaleString()} stored chunks</li>
+              <li>All {(source.document_count ?? 0).toLocaleString()} ingested documents</li>
               <li>All pgvector embeddings for this source</li>
               <li>Any pipeline references to this source</li>
             </ul>
             <span className="block text-xs text-red-400 mt-2">This cannot be undone.</span>
-          </AlertDialogDescription>
+          </div>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel

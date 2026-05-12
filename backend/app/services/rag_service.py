@@ -4,7 +4,6 @@ from app.core.config import settings
 from app.services.embedding_service import embed_text
 
 from supabase import create_client, Client
-from yarl import URL
 
 import hashlib
 
@@ -12,7 +11,6 @@ import hashlib
 def _get_client() -> Client:
     """Create a Supabase client with the service role key (bypasses RLS)."""
     client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-    client.postgrest.base_url = URL(settings.SUPABASE_URL)
     return client
 
 
@@ -27,16 +25,17 @@ async def search_chunks(
     query: str,
     top_k: int = 5,
     similarity_threshold: float = 0.75,
+    api_key: str | None = None,
 ) -> list[dict]:
     """Perform vector similarity search against the chunks table.
 
     Steps:
-      1. Embed the query using intfloat/multilingual-e5-large (1024-dim).
+      1. Embed the query via OpenRouter (bge-m3, 1024-dim).
       2. Call the match_chunks RPC for pgvector cosine similarity search.
       3. Return matched chunks with similarity scores.
     """
     # 1. Generate query embedding
-    query_vector = embed_text(query, is_query=True)
+    query_vector = embed_text(query, api_key=api_key)
 
     # 2. pgvector cosine similarity search via RPC
     client = _get_client()
@@ -99,6 +98,7 @@ async def retrieve_chunks(
     top_k: int = 5,
     threshold: float = 0.75,
     user_id: str | None = None,
+    api_key: str | None = None,
 ) -> list[dict]:
     """High-level retrieval: search + dedup + filter.
 
@@ -110,6 +110,7 @@ async def retrieve_chunks(
         query=query,
         top_k=top_k,
         similarity_threshold=threshold,
+        api_key=api_key,
     )
     deduped = dedup_chunks(raw)
     filtered = filter_by_relevance(deduped, threshold)

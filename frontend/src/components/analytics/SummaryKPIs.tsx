@@ -12,8 +12,10 @@ export function SummaryKPIs({ summary, loading }: Props) {
   const successRate = summary
     ? summary.total_runs > 0
       ? ((summary.success_runs / summary.total_runs) * 100).toFixed(1)
-      : '0.0'
+      : null
     : null
+
+  const hasRuns = summary ? summary.total_runs > 0 : false
 
   const kpis = [
     {
@@ -52,9 +54,9 @@ export function SummaryKPIs({ summary, loading }: Props) {
       icon:    AlertCircle,
       label:   'Success Rate',
       value:   successRate !== null ? `${successRate}%` : '—',
-      sub:     summary ? `${summary.total_runs - summary.success_runs} failures` : '',
-      color:   successRate !== null && Number(successRate) >= 95 ? 'text-emerald-400' : 'text-red-400',
-      bg:      successRate !== null && Number(successRate) >= 95 ? 'bg-emerald-500/10' : 'bg-red-500/10',
+      sub:     hasRuns ? `${summary!.total_runs - summary!.success_runs} failures` : '',
+      color:   !hasRuns ? 'text-muted-foreground' : Number(successRate) >= 95 ? 'text-emerald-400' : 'text-red-400',
+      bg:      !hasRuns ? 'bg-muted/50' : Number(successRate) >= 95 ? 'bg-emerald-500/10' : 'bg-red-500/10',
     },
   ]
 

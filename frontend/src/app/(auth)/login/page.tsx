@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Sign In — CET' }
 export default function LoginPage() {
   return (
     <div className="min-h-dvh flex items-center justify-center bg-zinc-950 px-4">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-100">
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <div className="flex items-center gap-2.5">

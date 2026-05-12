@@ -25,15 +25,17 @@ class Settings(BaseSettings):
     MODEL_BUDGET: str = "google/gemini-3.1-pro-preview"
 
     # Embedding
-    EMBEDDING_MODEL: str = "openai/text-embedding-3-small"
-    EMBEDDING_DIMENSIONS: int = 1536
+    EMBEDDING_MODEL: str = "baai/bge-m3"
+    EMBEDDING_DIMENSIONS: int = 1024
 
     # Frontend URL (CORS)
     FRONTEND_URL: str = "http://localhost:3000"
 
     # OAuth Providers
     GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
     GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
 
     # Error Tracking
     SENTRY_DSN: str = ""

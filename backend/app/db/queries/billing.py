@@ -1,6 +1,5 @@
 from datetime import datetime, timezone, date
 
-from yarl import URL
 from supabase import create_client, Client
 
 from app.core.config import settings
@@ -9,7 +8,6 @@ from app.core.config import settings
 def _get_client() -> Client:
     """Create a Supabase client with the service role key (bypasses RLS)."""
     client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-    client.postgrest.base_url = URL(settings.SUPABASE_URL)
     return client
 
 
@@ -39,7 +37,7 @@ async def get_usage(user_id: str) -> dict:
 
     # Knowledge sources count
     knowledge = (
-        client.table("knowledgesources")
+        client.table("knowledge_sources")
         .select("id", count="exact")
         .eq("user_id", user_id)
         .execute()
@@ -47,7 +45,7 @@ async def get_usage(user_id: str) -> dict:
 
     # Runs this month
     runs = (
-        client.table("pipelineruns")
+        client.table("pipeline_runs")
         .select("id", count="exact")
         .eq("user_id", user_id)
         .gte("created_at", start.isoformat())

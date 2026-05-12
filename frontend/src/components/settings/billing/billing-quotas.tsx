@@ -83,7 +83,7 @@ export function BillingQuotas() {
                     <Skeleton className="h-3 w-28 bg-zinc-800" />
                   ) : (
                     <span className="text-xs text-zinc-400 font-mono tabular-nums">
-                      {data ? row.format(data[row.key]) : '\u2014'}
+                      {data && data[row.key] != null ? row.format(data[row.key]) : '\u2014'}
                     </span>
                   )}
                   <span className="text-xs text-emerald-400 font-medium w-20 text-right">
@@ -91,7 +91,7 @@ export function BillingQuotas() {
                   </span>
                 </div>
               </div>
-              {'showBar' in row && row.showBar && data && (
+              {'showBar' in row && row.showBar && data?.storage_mb != null && (
                 <div className="h-1.5 w-full rounded-full bg-zinc-800">
                   <div
                     className="h-1.5 rounded-full bg-violet-500 transition-all"

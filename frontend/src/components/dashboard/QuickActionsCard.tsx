@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Plus, GitBranch, Database, BarChart2 } from 'lucide-react'
+import { Plus, Upload, Gamepad2, Database } from 'lucide-react'
 
 const ACTIONS = [
   {
@@ -13,26 +13,26 @@ const ACTIONS = [
     bg:      'bg-violet-500/10 hover:bg-violet-500/20 border-violet-800/50',
   },
   {
-    icon:    Database,
-    label:   'Add Knowledge',
-    desc:    'Ingest documents for RAG',
-    href:    '/knowledge',
+    icon:    Upload,
+    label:   'Upload Document',
+    desc:    'Ingest files for RAG',
+    href:    '/knowledge?action=upload',
     color:   'text-emerald-400',
     bg:      'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-800/50',
   },
   {
-    icon:    GitBranch,
-    label:   'View Pipelines',
-    desc:    'Manage all pipelines',
-    href:    '/pipelines',
+    icon:    Gamepad2,
+    label:   'Open Playground',
+    desc:    'Chat with any model',
+    href:    '/playground',
     color:   'text-blue-400',
     bg:      'bg-blue-500/10 hover:bg-blue-500/20 border-blue-800/50',
   },
   {
-    icon:    BarChart2,
-    label:   'Analytics',
-    desc:    'Token usage & costs',
-    href:    '/analytics',
+    icon:    Database,
+    label:   'Add Knowledge',
+    desc:    'Create a knowledge base',
+    href:    '/knowledge?action=create',
     color:   'text-amber-400',
     bg:      'bg-amber-500/10 hover:bg-amber-500/20 border-amber-800/50',
   },

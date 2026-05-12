@@ -8,24 +8,28 @@ import { RecentRunsCard }         from './RecentRunsCard'
 import { RecentPipelinesCard }    from './RecentPipelinesCard'
 import { RecentSourcesCard }      from './RecentSourcesCard'
 import { QuickActionsCard }       from './QuickActionsCard'
+import { OnboardingChecklist }    from './OnboardingChecklist'
 import { Layers } from 'lucide-react'
 import { format } from 'date-fns'
+import { useAuthStore } from '@/stores/auth.store'
 
 export function DashboardPageContent() {
   const router = useRouter()
+  const user = useAuthStore((s) => s.user)
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn:  getDashboard,
-    staleTime: 60_000,
-    refetchInterval: 60_000,   // refresh every minute for live "today" stats
+    staleTime: 10_000,
+    refetchInterval: 30_000,
   })
 
-  const greeting = getGreeting()
-  const today    = format(new Date(), 'EEEE, MMMM d')
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? ''
+  const greeting  = getGreeting(firstName)
+  const today     = format(new Date(), 'EEEE, MMMM d')
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-800 shrink-0">
         <div>
@@ -45,6 +49,9 @@ export function DashboardPageContent() {
         {/* Quick actions */}
         <QuickActionsCard />
 
+        {/* Onboarding checklist */}
+        {data?.onboarding && <OnboardingChecklist onboarding={data.onboarding} />}
+
         {/* 2-column: recent runs + recent pipelines */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <RecentRunsCard      runs={data?.recent_runs       ?? []} loading={isLoading} />
@@ -58,9 +65,10 @@ export function DashboardPageContent() {
   )
 }
 
-function getGreeting(): string {
+function getGreeting(name: string): string {
   const h = new Date().getHours()
-  if (h < 12) return 'Good morning'
-  if (h < 17) return 'Good afternoon'
-  return 'Good evening'
+  const suffix = name ? `, ${name}` : ''
+  if (h < 12) return `Good morning${suffix}`
+  if (h < 17) return `Good afternoon${suffix}`
+  return `Good evening${suffix}`
 }

@@ -77,7 +77,16 @@ export const runPipeline = (id: string, message: string, modelOverride?: string)
     body: JSON.stringify({ message, model_override: modelOverride ?? null }),
   })
 
+/** Extract the LLM model from a pipeline's canvas_state nodes. */
+export function pipelineModel(p: Pipeline): string | undefined {
+  const nodes = p.canvas_state?.nodes as Array<{ data?: { type?: string; model?: string } }> | undefined
+  if (!nodes) return undefined
+  const llmNode = nodes.find((n) => n.data?.type === 'llm')
+  return llmNode?.data?.model
+}
+
 /** Derives a short model label for display: "claude-sonnet-4.6" from "anthropic/claude-sonnet-4-6" */
-export function modelShortname(model: string): string {
+export function modelShortname(model: string | null | undefined): string {
+  if (!model) return '—'
   return model.split('/').pop()?.replace(/-/g, '.') ?? model
 }

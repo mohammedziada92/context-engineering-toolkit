@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart2 } from 'lucide-react'
-import { getAnalytics, type AnalyticsResponse, type Period } from '@/lib/api/analytics'
+import { BarChart2, Download } from 'lucide-react'
+import { toast } from 'sonner'
+import { getAnalytics, getRuns, type AnalyticsResponse, type Period } from '@/lib/api/analytics'
 import { PeriodSelector }     from './PeriodSelector'
 import { SummaryKPIs }        from './SummaryKPIs'
 import { TokenUsageChart }    from './TokenUsageChart'
@@ -11,6 +12,9 @@ import { CostChart }          from './CostChart'
 import { ModelBreakdownTable }    from './ModelBreakdownTable'
 import { PipelineBreakdownTable } from './PipelineBreakdownTable'
 import { RunHistoryTable }        from './RunHistoryTable'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export function AnalyticsPageContent() {
   const [period, setPeriod] = useState<Period>('30d')
@@ -18,11 +22,44 @@ export function AnalyticsPageContent() {
   const { data, isLoading } = useQuery<AnalyticsResponse>({
     queryKey: ['analytics', period],
     queryFn:  () => getAnalytics(period),
-    staleTime: 5 * 60_000,  // 5 minutes — analytics data doesn't change second-by-second
+    staleTime: 5 * 60_000,
   })
 
+  const handleExportCSV = useCallback(async () => {
+    try {
+      const res = await getRuns({ period, limit: 100 })
+      const rows = res.items
+      if (rows.length === 0) { toast.error('No runs to export'); return }
+      const header = 'Pipeline,Model,Status,Input Tokens,Output Tokens,Total Tokens,Cost (USD),Latency (ms),Time'
+      const lines = rows.map((r) =>
+        [
+          `"${(r.pipeline_name ?? '').replace(/"/g, '""')}"`,
+          r.model,
+          r.status,
+          r.input_tokens,
+          r.output_tokens,
+          r.total_tokens,
+          r.cost_usd.toFixed(4),
+          r.latency_ms,
+          new Date(r.created_at).toISOString(),
+        ].join(',')
+      )
+      const csv = [header, ...lines].join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `analytics-${period}-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success(`Exported ${rows.length} runs to CSV`)
+    } catch {
+      toast.error('Failed to export CSV')
+    }
+  }, [period])
+
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-800 shrink-0">
         <div>
@@ -34,7 +71,31 @@ export function AnalyticsPageContent() {
             Token usage, costs, and pipeline run history
           </p>
         </div>
-        <PeriodSelector value={period} onChange={setPeriod} />
+        <div className="flex items-center gap-2">
+          <PeriodSelector value={period} onChange={setPeriod} />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="inline-flex items-center justify-center gap-1.5 h-7 px-3 rounded-md border border-zinc-700 bg-transparent text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-zinc-900 border-zinc-800" align="end">
+              <DropdownMenuItem
+                className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100"
+                onClick={handleExportCSV}
+              >
+                Download CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100"
+                onClick={() => toast.info('PDF export coming soon')}
+              >
+                Download PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Scrollable content */}

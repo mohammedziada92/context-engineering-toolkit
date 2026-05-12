@@ -80,23 +80,43 @@ export function computeTokenUsage(nodes: Node[]): {
 
 // ── Validation ───────────────────────────────────────────────────────────────
 
-export function validatePipeline(nodes: Node[], edges: Edge[]): string[] {
-  const errors: string[] = []
+export type Severity = 'error' | 'warning'
+
+export interface ValidationIssue {
+  message: string
+  severity: Severity
+}
+
+const NODE_TYPE_LABELS: Record<string, string> = {
+  systemPrompt: 'System Prompt',
+  rag:          'Vector Search',
+  history:      'Chat History',
+  llm:          'LLM Model',
+  output:       'Output',
+}
+
+export function validatePipeline(nodes: Node[], edges: Edge[]): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
   const types = nodes.map((n) => (n.data as unknown as CETNodeData).type)
 
-  if (!types.includes('llm'))    errors.push('Add an LLM Model node')
-  if (!types.includes('output')) errors.push('Add an Output node')
+  // Error-level: missing required nodes (blocks run)
+  if (!types.includes('llm'))    issues.push({ message: 'Add an LLM Model node', severity: 'error' })
+  if (!types.includes('output')) issues.push({ message: 'Add an Output node', severity: 'error' })
 
-  // Check every non-output node has at least one outgoing edge
+  // Warning-level: missing optional nodes
+  if (!types.includes('systemPrompt')) issues.push({ message: 'Add a System Prompt node', severity: 'warning' })
+
+  // Error-level: disconnected nodes
   const sources = new Set(edges.map((e) => e.source))
   for (const n of nodes) {
     const d = n.data as unknown as CETNodeData
     if (d.type !== 'output' && !sources.has(n.id)) {
-      errors.push(`"${n.id}" node is not connected`)
+      const label = NODE_TYPE_LABELS[d.type] ?? d.type
+      issues.push({ message: `${label} node is not connected`, severity: 'error' })
     }
   }
 
-  return errors
+  return issues
 }
 
 // ── Store ────────────────────────────────────────────────────────────────────
@@ -169,13 +189,13 @@ export const usePipelineStore = create<PipelineStore>()(
     onNodesChange: (changes) =>
       set((s) => ({
         nodes:   applyNodeChanges(changes, s.nodes),
-        isDirty: true,
+        isDirty: changes.some(c => c.type !== 'dimensions' && c.type !== 'select') ? true : s.isDirty,
       })),
 
     onEdgesChange: (changes) =>
       set((s) => ({
         edges:   applyEdgeChanges(changes, s.edges),
-        isDirty: true,
+        isDirty: changes.some(c => c.type !== 'select') ? true : s.isDirty,
       })),
 
     onConnect: (connection) =>

@@ -24,6 +24,7 @@ export interface SessionMessage {
   role: 'user' | 'assistant'
   content: string
   model?: string
+  retrieved_chunks?: unknown[]
   metadata?: Record<string, unknown>
   created_at?: string
 }
@@ -141,30 +142,29 @@ function buildCanvasFromConfig(cfg: {
   threshold?: number
 }) {
   const nodes: Array<{ id: string; type: string; position: { x: number; y: number }; data: Record<string, unknown> }> = [
-    { id: 'user-msg', type: 'userMessage', position: { x: 80, y: 200 }, data: {} },
-    { id: 'sys-prompt', type: 'systemPrompt', position: { x: 80, y: 80 }, data: { content: cfg.system_prompt } },
-    { id: 'llm', type: 'llmModel', position: { x: 480, y: 160 }, data: { model: cfg.model } },
-    { id: 'output', type: 'output', position: { x: 720, y: 160 }, data: { format: 'markdown' } },
+    { id: 'sys-prompt', type: 'systemPrompt', position: { x: 80, y: 80 }, data: { content: cfg.system_prompt, type: 'systemPrompt', max_tokens: 500 } },
+    { id: 'llm', type: 'llm', position: { x: 480, y: 160 }, data: { model: cfg.model, type: 'llm', temperature: 0.7, max_output_tokens: 2048, stream: true } },
+    { id: 'output', type: 'output', position: { x: 720, y: 160 }, data: { format: 'markdown', type: 'output' } },
   ]
   const edges = [
-    { id: 'e1', source: 'user-msg', target: 'llm', animated: true },
-    { id: 'e2', source: 'sys-prompt', target: 'llm', animated: true },
-    { id: 'e3', source: 'llm', target: 'output', animated: true },
+    { id: 'e1', source: 'sys-prompt', target: 'llm', animated: true },
+    { id: 'e2', source: 'llm', target: 'output', animated: true },
   ]
   if (cfg.knowledge_source_id) {
     nodes.push({
       id: 'rag',
-      type: 'vectorSearch',
+      type: 'rag',
       position: { x: 280, y: 200 },
       data: {
+        type: 'rag',
         knowledge_source_id: cfg.knowledge_source_id,
         top_k: cfg.top_k ?? 5,
-        threshold: cfg.threshold ?? 0.70,
+        similarity_threshold: cfg.threshold ?? 0.70,
+        max_tokens: 1500,
       },
     })
     edges.push(
-      { id: 'e4', source: 'user-msg', target: 'rag', animated: true },
-      { id: 'e5', source: 'rag', target: 'llm', animated: true },
+      { id: 'e3', source: 'rag', target: 'llm', animated: true },
     )
   }
   return { nodes, edges, viewport: { x: 0, y: 0, zoom: 1 } }

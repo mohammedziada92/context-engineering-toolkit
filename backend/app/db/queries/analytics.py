@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from yarl import URL
 from supabase import create_client, Client
 
 from app.core.config import settings
@@ -9,7 +8,6 @@ from app.core.config import settings
 def _get_client() -> Client:
     """Create a Supabase client with the service role key (bypasses RLS)."""
     client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-    client.postgrest.base_url = URL(settings.SUPABASE_URL)
     return client
 
 
@@ -38,7 +36,7 @@ async def get_summary(
     client = _get_client()
 
     # Current period
-    query = client.table("pipelineruns").select(
+    query = client.table("pipeline_runs").select(
         "total_tokens, cost_usd, latency_ms, status"
     ).eq("user_id", user_id)
 
@@ -72,7 +70,7 @@ async def get_summary(
         prev_start = start - delta_duration
         prev_end = start
 
-        prev_query = client.table("pipelineruns").select(
+        prev_query = client.table("pipeline_runs").select(
             "total_tokens, cost_usd, latency_ms"
         ).eq("user_id", user_id).gte("created_at", prev_start.isoformat()).lt("created_at", prev_end.isoformat())
         if pipeline_id:
@@ -118,7 +116,7 @@ async def get_token_usage(
 
     if start and end:
         query = _apply_filters(
-            client.table("pipelineruns").select("created_at, prompt_tokens, completion_tokens, total_tokens"),
+            client.table("pipeline_runs").select("created_at, prompt_tokens, completion_tokens, total_tokens, cost_usd"),
             user_id, start, end, pipeline_id, model_id,
         )
         result = query.execute()
@@ -129,10 +127,12 @@ async def get_token_usage(
         for r in rows:
             day = r["created_at"][:10]
             if day not in by_date:
-                by_date[day] = {"date": day, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-            by_date[day]["prompt_tokens"] += r.get("prompt_tokens") or 0
-            by_date[day]["completion_tokens"] += r.get("completion_tokens") or 0
+                by_date[day] = {"date": day, "input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost_usd": 0.0, "run_count": 0}
+            by_date[day]["input_tokens"] += r.get("prompt_tokens") or 0
+            by_date[day]["output_tokens"] += r.get("completion_tokens") or 0
             by_date[day]["total_tokens"] += r.get("total_tokens") or 0
+            by_date[day]["cost_usd"] += float(r.get("cost_usd") or 0)
+            by_date[day]["run_count"] += 1
 
         return sorted(by_date.values(), key=lambda x: x["date"])
 
@@ -156,7 +156,7 @@ async def get_cost(
 
     if start and end:
         query = _apply_filters(
-            client.table("pipelineruns").select("created_at, model_used, cost_usd"),
+            client.table("pipeline_runs").select("created_at, model_used, cost_usd"),
             user_id, start, end, pipeline_id, model_id,
         )
         result = query.execute()
@@ -194,7 +194,7 @@ async def get_latency(
 
     if start and end:
         query = _apply_filters(
-            client.table("pipelineruns").select("pipeline_id, latency_ms, pipelines!pipelineruns_pipeline_id_fkey(name)"),
+            client.table("pipeline_runs").select("pipeline_id, latency_ms, pipelines!pipeline_runs_pipeline_id_fkey(name)"),
             user_id, start, end, pipeline_id, model_id,
         )
         result = query.execute()
@@ -251,11 +251,11 @@ async def get_runs(
 
     # Build base query with pipeline name join
     query = (
-        client.table("pipelineruns")
+        client.table("pipeline_runs")
         .select("id, pipeline_id, user_message, llm_response, model_used, "
                 "prompt_tokens, completion_tokens, total_tokens, cost_usd, "
                 "latency_ms, retrieved_chunks, status, error_message, created_at, "
-                "pipelines!pipelineruns_pipeline_id_fkey(name)")
+                "pipelines!pipeline_runs_pipeline_id_fkey(name)")
         .eq("user_id", user_id)
     )
 
@@ -273,7 +273,7 @@ async def get_runs(
 
     # Count total (same filters, just count)
     count_query = (
-        client.table("pipelineruns")
+        client.table("pipeline_runs")
         .select("id", count="exact")
         .eq("user_id", user_id)
     )
@@ -327,7 +327,7 @@ async def get_cost_by_model(
     client = _get_client()
 
     query = _apply_filters(
-        client.table("pipelineruns").select("model_used, cost_usd"),
+        client.table("pipeline_runs").select("model_used, cost_usd"),
         user_id, start, end, pipeline_id,
     )
     result = query.execute()
@@ -362,8 +362,8 @@ async def get_runs_by_pipeline(
     client = _get_client()
 
     query = _apply_filters(
-        client.table("pipelineruns").select(
-            "pipeline_id, cost_usd, pipelines!pipelineruns_pipeline_id_fkey(name)"
+        client.table("pipeline_runs").select(
+            "pipeline_id, cost_usd, pipelines!pipeline_runs_pipeline_id_fkey(name)"
         ),
         user_id, start, end, None, model_id,
     )
@@ -398,7 +398,7 @@ async def get_latency_distribution(
     client = _get_client()
 
     query = _apply_filters(
-        client.table("pipelineruns").select("latency_ms"),
+        client.table("pipeline_runs").select("latency_ms"),
         user_id, start, end, pipeline_id, model_id,
     )
     result = query.execute()
@@ -452,10 +452,10 @@ async def get_runs_for_export(
     client = _get_client()
 
     query = _apply_filters(
-        client.table("pipelineruns").select(
+        client.table("pipeline_runs").select(
             "id, pipeline_id, model_used, prompt_tokens, completion_tokens, "
             "cost_usd, latency_ms, status, created_at, "
-            "pipelines!pipelineruns_pipeline_id_fkey(name)"
+            "pipelines!pipeline_runs_pipeline_id_fkey(name)"
         ),
         user_id, start, end, pipeline_id, model_id,
     ).order("created_at", desc=True)
@@ -507,7 +507,7 @@ async def get_analytics(user_id: str, period: str = "30d") -> dict:
 
     # Enrich summary with success/error counts and period bounds
     client = _get_client()
-    runs_q = client.table("pipelineruns").select("status").eq("user_id", user_id)
+    runs_q = client.table("pipeline_runs").select("status").eq("user_id", user_id)
     runs_q = runs_q.gte("created_at", start.isoformat()).lt("created_at", end.isoformat())
     runs_result = runs_q.execute()
     all_runs = runs_result.data or []
@@ -528,31 +528,72 @@ async def get_analytics(user_id: str, period: str = "30d") -> dict:
     # Daily usage (input_tokens/output_tokens/total_tokens per day)
     daily_usage = await get_token_usage(user_id, start, end)
 
-    # Model breakdown
-    model_breakdown_raw = await get_cost_by_model(user_id, start, end)
+    # Model breakdown — aggregate cost, tokens, latency, error_rate
+    client_mb = _get_client()
+    mb_query = client_mb.table("pipeline_runs").select(
+        "model_used, cost_usd, total_tokens, latency_ms, status"
+    ).eq("user_id", user_id).gte("created_at", start.isoformat()).lt("created_at", end.isoformat())
+    mb_result = mb_query.execute()
+    mb_rows = mb_result.data or []
+
+    by_model: dict[str, dict] = {}
+    for r in mb_rows:
+        model = r.get("model_used") or "unknown"
+        if model not in by_model:
+            by_model[model] = {"model": model, "runs": 0, "cost": 0.0, "tokens": 0, "latency": 0, "errors": 0}
+        by_model[model]["runs"] += 1
+        by_model[model]["cost"] += float(r.get("cost_usd") or 0)
+        by_model[model]["tokens"] += r.get("total_tokens") or 0
+        by_model[model]["latency"] += r.get("latency_ms") or 0
+        if r.get("status") == "error":
+            by_model[model]["errors"] += 1
+
     model_breakdown = []
-    for m in model_breakdown_raw:
+    for m in sorted(by_model.values(), key=lambda x: x["cost"], reverse=True):
+        runs = m["runs"]
         model_breakdown.append({
             "model": m["model"],
-            "run_count": m["runs"],
-            "total_tokens": 0,  # not aggregated per model in current query
+            "run_count": runs,
+            "total_tokens": m["tokens"],
             "cost_usd": round(m["cost"], 6),
-            "avg_latency_ms": 0,
-            "error_rate": 0,
+            "avg_latency_ms": round(m["latency"] / runs, 1) if runs else 0,
+            "error_rate": round(m["errors"] / runs, 3) if runs else 0,
         })
 
-    # Pipeline breakdown
-    pipeline_breakdown_raw = await get_runs_by_pipeline(user_id, start, end)
+    # Pipeline breakdown — aggregate cost, tokens, latency, success_rate
+    client_pb = _get_client()
+    pb_query = client_pb.table("pipeline_runs").select(
+        "pipeline_id, cost_usd, total_tokens, latency_ms, status, "
+        "pipelines!pipeline_runs_pipeline_id_fkey(name)"
+    ).eq("user_id", user_id).gte("created_at", start.isoformat()).lt("created_at", end.isoformat())
+    pb_result = pb_query.execute()
+    pb_rows = pb_result.data or []
+
+    by_pipeline: dict[str, dict] = {}
+    for r in pb_rows:
+        pid = str(r.get("pipeline_id") or "playground")
+        pipeline_info = r.get("pipelines")
+        name = pipeline_info["name"] if pipeline_info else "Playground"
+        if pid not in by_pipeline:
+            by_pipeline[pid] = {"id": pid, "name": name, "runs": 0, "cost": 0.0, "tokens": 0, "latency": 0, "successes": 0}
+        by_pipeline[pid]["runs"] += 1
+        by_pipeline[pid]["cost"] += float(r.get("cost_usd") or 0)
+        by_pipeline[pid]["tokens"] += r.get("total_tokens") or 0
+        by_pipeline[pid]["latency"] += r.get("latency_ms") or 0
+        if r.get("status") == "success":
+            by_pipeline[pid]["successes"] += 1
+
     pipeline_breakdown = []
-    for p in pipeline_breakdown_raw:
+    for p in sorted(by_pipeline.values(), key=lambda x: x["runs"], reverse=True):
+        runs = p["runs"]
         pipeline_breakdown.append({
-            "pipeline_id": p.get("id", ""),
-            "pipeline_name": p.get("pipeline", "Unknown"),
-            "run_count": p["runs"],
-            "total_tokens": 0,
-            "cost_usd": round(p.get("cost", 0), 6),
-            "success_rate": 0,
-            "avg_latency_ms": 0,
+            "pipeline_id": p["id"],
+            "pipeline_name": p["name"],
+            "run_count": runs,
+            "total_tokens": p["tokens"],
+            "cost_usd": round(p["cost"], 6),
+            "success_rate": round(p["successes"] / runs, 3) if runs else 0,
+            "avg_latency_ms": round(p["latency"] / runs, 1) if runs else 0,
         })
 
     return {

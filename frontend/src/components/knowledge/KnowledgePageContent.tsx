@@ -80,7 +80,7 @@ export function KnowledgePageContent() {
       qc.invalidateQueries({ queryKey: ['knowledge'] })
       toast.success('Knowledge source created')
       setCreateOpen(false)
-      router.push(`/knowledge/${source.id}`)
+      if (source?.id) router.push(`/knowledge/${source.id}`)
     },
     onError: () => toast.error('Failed to create knowledge source'),
   })
@@ -102,7 +102,7 @@ export function KnowledgePageContent() {
   const isEmpty = !isLoading && sources.length === 0
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-800">
         <div>
@@ -148,7 +148,7 @@ export function KnowledgePageContent() {
               <KnowledgeSourceCard
                 key={source.id}
                 source={source}
-                onOpen={() => router.push(`/knowledge/${source.id}`)}
+                onOpen={() => { if (source?.id) router.push(`/knowledge/${source.id}`) }}
                 onDelete={() => setDeleteTarget(source)}
               />
             ))}

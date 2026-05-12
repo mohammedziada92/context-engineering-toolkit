@@ -17,6 +17,12 @@ export interface DashboardData {
   recent_runs:         RunRecord[]        // last 5 runs across all pipelines
   recent_pipelines:    Pipeline[]         // last 3 updated pipelines
   recent_sources:      KnowledgeSource[]  // last 3 updated knowledge sources
+  onboarding: {
+    has_api_key:   boolean
+    has_pipeline:  boolean
+    has_run:       boolean
+    complete:      boolean
+  }
 }
 
 export const getDashboard = (): Promise<DashboardData> =>

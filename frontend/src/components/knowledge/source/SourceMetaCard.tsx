@@ -6,8 +6,8 @@ export function SourceMetaCard({ source }: { source: KnowledgeSource }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-px border-b border-zinc-800 bg-zinc-800">
       {[
-        { icon: FileText, label: 'Documents',       value: source.document_count.toLocaleString() },
-        { icon: Layers,   label: 'Chunks',          value: source.chunk_count.toLocaleString() },
+        { icon: FileText, label: 'Documents',       value: (source.document_count ?? 0).toLocaleString() },
+        { icon: Layers,   label: 'Chunks',          value: (source.chunk_count ?? 0).toLocaleString() },
         { icon: Cpu,      label: 'Embedding Model', value: source.embedding_model },
         { icon: null,     label: 'Created',         value: format(new Date(source.created_at), 'MMM d, yyyy') },
       ].map(({ icon: Icon, label, value }) => (

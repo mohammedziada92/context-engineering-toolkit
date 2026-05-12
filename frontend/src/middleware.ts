@@ -4,6 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PUBLIC_PATHS = ['/login', '/auth/callback']
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
+
   let response = NextResponse.next({
     request: { headers: request.headers },
   })
@@ -25,14 +28,10 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session — required by @supabase/ssr to keep tokens valid
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
-
   // Unauthenticated user hitting a protected route → /login
-  if (!user && !isPublic) {
+  if (!user && !isPublic && pathname !== '/') {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/login'
     loginUrl.searchParams.set('next', pathname)
@@ -51,12 +50,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all paths except:
-     * - _next/static, _next/image (Next.js internals)
-     * - favicon.ico, public files
-     * - api routes (handled by FastAPI backend, not Next.js)
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

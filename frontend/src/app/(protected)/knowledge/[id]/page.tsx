@@ -5,10 +5,11 @@ import { KnowledgeSourceSkeleton } from '@/components/knowledge/source/Knowledge
 
 export const metadata: Metadata = { title: 'Knowledge Source — CET' }
 
-export default function KnowledgeSourcePage({ params }: { params: { id: string } }) {
+export default async function KnowledgeSourcePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   return (
     <Suspense fallback={<KnowledgeSourceSkeleton />}>
-      <KnowledgeSourceContent id={params.id} />
+      <KnowledgeSourceContent id={id} />
     </Suspense>
   )
 }

@@ -71,7 +71,7 @@ export const listKnowledgeSources = (
 
 // Backward-compat flat export used by ConfigPanel (returns all ready sources)
 export const getKnowledgeSources = (): Promise<KnowledgeSource[]> =>
-  listKnowledgeSources({ status: 'ready', limit: 200 }).then((r) => r.items)
+  listKnowledgeSources({ status: 'ready', limit: 100 }).then((r) => r.items)
 
 export const getKnowledgeSource = (id: string): Promise<KnowledgeSource> =>
   apiFetch(`/api/v1/knowledge/${id}`)

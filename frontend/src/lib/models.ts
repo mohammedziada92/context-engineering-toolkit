@@ -45,6 +45,7 @@ export function modelById(id: string): SupportedModel | undefined {
 }
 
 /** "claude-sonnet-4.6" from "anthropic/claude-sonnet-4-6" */
-export function modelShortname(id: string): string {
+export function modelShortname(id: string | null | undefined): string {
+  if (!id) return '—'
   return id.split('/').pop()?.replace(/-/g, '.') ?? id
 }

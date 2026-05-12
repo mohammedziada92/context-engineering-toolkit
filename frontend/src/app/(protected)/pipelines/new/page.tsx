@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { ReactFlowProvider } from '@xyflow/react'
 
 import { usePipelineStore }          from '@/stores/pipeline.store'
+import { useShallow }                from 'zustand/react/shallow'
 import { createPipeline, updatePipeline, deletePipeline, duplicatePipeline } from '@/lib/api/pipelines'
 import { CanvasTopBar }              from '@/components/canvas/CanvasTopBar'
 import { TokenBudgetBar }            from '@/components/canvas/controls/TokenBudgetBar'
@@ -25,7 +26,16 @@ const AUTO_SAVE_DELAY = 30_000
 export default function NewPipelinePage() {
   const router = useRouter()
   const qc     = useQueryClient()
-  const store  = usePipelineStore()
+  const store  = usePipelineStore(
+    useShallow((s) => ({
+      pipelineId: s.pipelineId, pipelineName: s.pipelineName,
+      nodes: s.nodes, edges: s.edges, viewport: s.viewport,
+      status: s.status, isDirty: s.isDirty, isSaving: s.isSaving,
+      setPipelineId: s.setPipelineId, setPipelineName: s.setPipelineName,
+      setStatus: s.setStatus, setSaving: s.setSaving, setDirty: s.setDirty,
+      loadCanvas: s.loadCanvas, reset: s.reset,
+    }))
+  )
 
   // Reset store on mount
   useEffect(() => { store.reset() }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -106,7 +116,7 @@ export default function NewPipelinePage() {
 
   return (
     <ReactFlowProvider>
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <CanvasTopBar
           onSave={handleSave}
           onRun={() => toast.info('Save the pipeline first, then use Run')}

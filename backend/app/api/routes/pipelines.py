@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from typing import Optional
 import uuid, json, asyncio
 
-from app.middleware.auth import get_current_user
+from app.middleware.auth import get_current_user, get_current_user_sse
 from app.db.queries import pipelines as q
 from app.models.pipeline import (
     PipelineCreate, PipelineUpdate, PipelinePatch,
@@ -55,9 +55,10 @@ async def patch_pipeline(pipeline_id: str, body: PipelinePatch, user=Depends(get
     return await q.patch_pipeline(user_id=user["sub"], pipeline_id=pipeline_id, body=body)
 
 
-@router.delete("/{pipeline_id}", status_code=204)
+@router.delete("/{pipeline_id}")
 async def delete_pipeline(pipeline_id: str, user=Depends(get_current_user)):
     await q.delete_pipeline(user_id=user["sub"], pipeline_id=pipeline_id)
+    return {"deleted": True}
 
 
 @router.post("/{pipeline_id}/duplicate")
@@ -79,7 +80,7 @@ async def run_pipeline_stream(
     pipeline_id: str,
     message:        str          = Query(...),
     model_override: Optional[str]= Query(None),
-    user=Depends(get_current_user),
+    user=Depends(get_current_user_sse),
 ):
     """SSE stream endpoint for pipeline runs from EventSource (GET + query-string auth)."""
     user_id = user["sub"]
@@ -91,15 +92,20 @@ async def run_pipeline_stream(
     if not pipeline:
         raise HTTPException(404, "Pipeline not found")
 
+    canvas_state = pipeline.get("canvas_state") or {}
+    pipeline_config = pipeline.get("pipeline_config") or {}
+
     async def event_stream():
-        async for event in execute_pipeline(
-            pipeline_config=pipeline["pipeline_config"],
+        async for event_type, event_data in execute_pipeline(
+            canvas_state=canvas_state,
+            pipeline_config=pipeline_config,
+            pipeline_id=pipeline_id,
             user_message=message,
             user_id=user_id,
             session_id=str(uuid.uuid4()),
             model_override=model_override,
         ):
-            yield f"event: {event['type']}\ndata: {json.dumps(event['data'])}\n\n"
+            yield f"event: {event_type}\ndata: {json.dumps(event_data)}\n\n"
 
     return StreamingResponse(
         event_stream(),

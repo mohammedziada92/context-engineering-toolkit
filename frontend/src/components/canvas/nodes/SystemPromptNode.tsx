@@ -8,7 +8,7 @@ import { usePipelineStore, type SystemPromptData } from '@/stores/pipeline.store
 export const SystemPromptNode = memo(function SystemPromptNode({
   id, data, selected,
 }: NodeProps) {
-  const d           = data as unknown as { type: 'systemPrompt' } & SystemPromptData
+  const d           = { content: '', max_tokens: 500, ...data } as unknown as { type: 'systemPrompt' } & SystemPromptData
   const setSelected = usePipelineStore((s) => s.setSelectedNode)
   const preview     = d.content
     ? d.content.slice(0, 80) + (d.content.length > 80 ? '…' : '')

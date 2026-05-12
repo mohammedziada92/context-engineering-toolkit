@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Search, LayoutGrid, List } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
@@ -27,10 +27,15 @@ export function PipelinesToolbar({
   search, status, sort, view,
   onSearchChange, onStatusChange, onSortChange, onViewChange,
 }: Props) {
+  const [localSearch, setLocalSearch] = useState(search)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Sync when parent resets search (e.g. clear)
+  useEffect(() => { setLocalSearch(search) }, [search])
 
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value
+    setLocalSearch(val)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => onSearchChange(val), 300)
   }
@@ -43,7 +48,7 @@ export function PipelinesToolbar({
       <div className="relative flex-1 min-w-[200px]">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
         <Input
-          defaultValue={search}
+          value={localSearch}
           onChange={handleSearch}
           placeholder="Search pipelines..."
           className="pl-9 bg-zinc-900 border-zinc-800 text-zinc-200 placeholder:text-zinc-500 focus-visible:ring-violet-500/30"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -8,6 +8,7 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   listPipelines,
+  patchPipeline,
   deletePipeline,
   duplicatePipeline,
   type Pipeline,
@@ -19,6 +20,7 @@ import { PipelineListRow } from './PipelineListRow'
 import { RunModal } from './RunModal'
 import { PipelineDeleteDialog } from './PipelineDeleteDialog'
 import { EmptyPipelines } from './EmptyPipelines'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   Pagination,
   PaginationContent,
@@ -73,12 +75,25 @@ export function PipelinesPageContent() {
   // --- Data ---
   const { data, isLoading } = useQuery({
     queryKey: ['pipelines', { search, status, sort, page }],
-    queryFn: () => listPipelines({ page, limit: PAGE_LIMIT, status, sort: sort as never, search }),
+    queryFn: () => listPipelines({ page, limit: PAGE_LIMIT, status, search }),
     placeholderData: (prev) => prev,
     staleTime: 30_000,
   })
 
-  const pipelines  = data?.items ?? []
+  const pipelines  = useMemo(() => {
+    const list = [...(data?.items ?? [])]
+    switch (sort) {
+      case 'name':
+        return list.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', undefined, { sensitivity: 'base', numeric: true }))
+      case 'created_at':
+        return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      case 'run_count':
+        return list.sort((a, b) => (b.run_count ?? 0) - (a.run_count ?? 0))
+      case 'updated_at':
+      default:
+        return list.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    }
+  }, [data?.items, sort])
   const totalPages = Math.ceil((data?.total ?? 0) / PAGE_LIMIT)
 
   // --- Mutations ---
@@ -103,6 +118,22 @@ export function PipelinesPageContent() {
     onError: () => toast.error('Failed to duplicate pipeline'),
   })
 
+  const { mutate: doToggleStatus } = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: PipelineStatus }) =>
+      patchPipeline(id, { status }),
+    onSuccess: (_, { status }) => {
+      qc.invalidateQueries({ queryKey: ['pipelines'] })
+      toast.success(`Pipeline set to ${status === 'active' ? 'Active' : 'Draft'}`)
+    },
+    onError: () => toast.error('Failed to update status'),
+  })
+
+  function handleStatusToggle(p: Pipeline) {
+    if (!p.id) return
+    const next: PipelineStatus = p.status === 'active' ? 'draft' : 'active'
+    doToggleStatus({ id: p.id, status: next })
+  }
+
   // --- Handlers ---
   function handleSearchChange(v: string) {
     setSearch(v); setPage(1)
@@ -122,6 +153,7 @@ export function PipelinesPageContent() {
   }
 
   return (
+    <TooltipProvider>
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1200px] mx-auto px-6 py-8">
 
@@ -169,6 +201,7 @@ export function PipelinesPageContent() {
                 onEdit={() => router.push(`/pipelines/${p.id}`)}
                 onDuplicate={() => doDuplicate(p.id)}
                 onDelete={() => setDeleteTarget(p)}
+                onStatusToggle={() => handleStatusToggle(p)}
               />
             ))}
             {/* New Pipeline dashed card */}
@@ -202,6 +235,7 @@ export function PipelinesPageContent() {
                     onEdit={() => router.push(`/pipelines/${p.id}`)}
                     onDuplicate={() => doDuplicate(p.id)}
                     onDelete={() => setDeleteTarget(p)}
+                    onStatusToggle={() => handleStatusToggle(p)}
                   />
                 ))}
               </tbody>
@@ -248,6 +282,7 @@ export function PipelinesPageContent() {
         />
       )}
     </div>
+    </TooltipProvider>
   )
 }
 

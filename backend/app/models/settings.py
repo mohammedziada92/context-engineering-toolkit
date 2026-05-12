@@ -8,7 +8,7 @@ from app.core.config import settings
 
 
 class ValidateKeyRequest(BaseModel):
-    api_key: str = Field(..., pattern=r"^sk-or-")
+    api_key: str
 
 
 class ValidateKeyResponse(BaseModel):
@@ -33,10 +33,10 @@ class UpdateModelRequest(BaseModel):
 
 class SettingsResponse(BaseModel):
     user_id: UUID
-    openrouter_api_key: str  # always "sk-or-masked"
+    openrouter_api_key: str | None = None
     default_model: str
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 

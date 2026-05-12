@@ -69,7 +69,7 @@ export function SearchPanel({ sourceId }: { sourceId: string }) {
           <span className="text-xs text-zinc-500 shrink-0 w-12">Top K</span>
           <Slider
             value={[topK]}
-            onValueChange={([v]) => setTopK(v)}
+            onValueChange={(v) => setTopK(typeof v === 'number' ? v : (v as number[])[0])}
             min={1}
             max={20}
             step={1}
@@ -81,7 +81,7 @@ export function SearchPanel({ sourceId }: { sourceId: string }) {
           <span className="text-xs text-zinc-500 shrink-0 w-16">Threshold</span>
           <Slider
             value={[thresh]}
-            onValueChange={([v]) => setThresh(v)}
+            onValueChange={(v) => setThresh(typeof v === 'number' ? v : (v as number[])[0])}
             min={0.50}
             max={1.00}
             step={0.01}

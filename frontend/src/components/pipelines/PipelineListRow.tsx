@@ -3,6 +3,7 @@
 import { formatDistanceToNow } from 'date-fns'
 import { Play, Edit2, Copy, Trash2, MoreHorizontal } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -11,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { type Pipeline, modelShortname } from '@/lib/api/pipelines'
+import { type Pipeline, modelShortname, pipelineModel } from '@/lib/api/pipelines'
 
 interface Props {
   pipeline: Pipeline
@@ -19,9 +20,10 @@ interface Props {
   onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
+  onStatusToggle: () => void
 }
 
-export function PipelineListRow({ pipeline, onRun, onEdit, onDuplicate, onDelete }: Props) {
+export function PipelineListRow({ pipeline, onRun, onEdit, onDuplicate, onDelete, onStatusToggle }: Props) {
   const isActive = pipeline.status === 'active'
 
   return (
@@ -31,19 +33,29 @@ export function PipelineListRow({ pipeline, onRun, onEdit, onDuplicate, onDelete
     >
       <td className="px-4 py-3 text-zinc-200 font-medium">{pipeline.name}</td>
       <td className="px-4 py-3">
-        <Badge
-          variant="outline"
-          className={
-            isActive
-              ? 'border-transparent bg-emerald-500/10 text-emerald-400 text-xs'
-              : 'border-transparent bg-zinc-800 text-zinc-400 text-xs'
-          }
-        >
-          <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
-          {isActive ? 'Active' : 'Draft'}
-        </Badge>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Badge
+                variant="outline"
+                className={`cursor-pointer select-none transition-colors ${
+                  isActive
+                    ? 'border-transparent bg-emerald-500/10 text-emerald-400 text-xs hover:bg-emerald-500/20'
+                    : 'border-transparent bg-zinc-800 text-zinc-400 text-xs hover:bg-zinc-700'
+                }`}
+                onClick={(e: React.MouseEvent) => { e.stopPropagation(); onStatusToggle() }}
+              >
+                <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+                {isActive ? 'Active' : 'Draft'}
+              </Badge>
+            }
+          />
+          <TooltipContent side="bottom" className="text-xs">
+            Click to set {isActive ? 'Draft' : 'Active'}
+          </TooltipContent>
+        </Tooltip>
       </td>
-      <td className="px-4 py-3 text-zinc-400 font-mono text-xs">{modelShortname(pipeline.model)}</td>
+      <td className="px-4 py-3 text-zinc-400 font-mono text-xs">{modelShortname(pipelineModel(pipeline))}</td>
       <td className="px-4 py-3 text-zinc-400 text-right">{pipeline.run_count}</td>
       <td className="px-4 py-3 text-zinc-500 text-right text-xs">
         {formatDistanceToNow(new Date(pipeline.updated_at), { addSuffix: true })}
@@ -60,15 +72,11 @@ export function PipelineListRow({ pipeline, onRun, onEdit, onDuplicate, onDelete
             <Play className="h-3.5 w-3.5" />
           </Button>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-zinc-400 hover:text-zinc-200"
-                aria-label="More options"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
+            <DropdownMenuTrigger
+              className="inline-flex items-center justify-center h-7 w-7 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+              aria-label="More options"
+            >
+              <MoreHorizontal className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800 text-zinc-200 w-40">
               <DropdownMenuItem onClick={onEdit} className="gap-2 cursor-pointer hover:bg-zinc-800">

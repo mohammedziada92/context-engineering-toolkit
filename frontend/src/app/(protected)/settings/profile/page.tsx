@@ -6,8 +6,10 @@ export const metadata = { title: 'Profile — CET Settings' }
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<SettingsPageSkeleton />}>
-      <ProfilePageContent />
-    </Suspense>
+    <div className="flex-1 overflow-y-auto">
+      <Suspense fallback={<SettingsPageSkeleton />}>
+        <ProfilePageContent />
+      </Suspense>
+    </div>
   )
 }

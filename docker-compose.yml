@@ -1,0 +1,251 @@
+# ============================================================
+# CET — Context Engineering Toolkit
+# Docker Compose for Local Development
+# Source: ARCHITECTURE.md Section 11
+# ============================================================
+
+services:
+  # ── Database ───────────────────────────────────────────────
+  cet-db:
+    image: supabase/postgres:15.14.1.107
+    container_name: cet-db
+    ports:
+      - "55432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - cet-network
+
+  # ── Auth (GoTrue) ─────────────────────────────────────────
+  cet-auth:
+    image: supabase/gotrue:v2.189.0-rc.13
+    container_name: cet-auth
+    depends_on:
+      cet-db:
+        condition: service_healthy
+    ports:
+      - "55424:9999"
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://localhost:8000
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-postgres}@cet-db:5432/postgres
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST: ""
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMS_AUTOCONFIRM: "true"
+      GOTRUE_SMS_PROVIDER: "twilio"
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      # Google OAuth (TODO: fill in credentials)
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: "true"
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: http://localhost:3000/auth/callback
+      # GitHub OAuth (TODO: fill in credentials)
+      GOTRUE_EXTERNAL_GITHUB_ENABLED: "true"
+      GOTRUE_EXTERNAL_GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GITHUB_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GOTRUE_EXTERNAL_GITHUB_REDIRECT_URI: http://localhost:3000/auth/callback
+    restart: unless-stopped
+    networks:
+      - cet-network
+
+  # ── REST API (PostgREST) ──────────────────────────────────
+  cet-rest:
+    image: postgrest/postgrest:v14.9
+    container_name: cet-rest
+    depends_on:
+      cet-db:
+        condition: service_healthy
+    ports:
+      - "55421:3000"
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-postgres}@cet-db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://cet-rest:3000/
+    restart: unless-stopped
+    networks:
+      - cet-network
+
+  # ── Realtime ──────────────────────────────────────────────
+  cet-realtime:
+    image: supabase/realtime:v2.83.0
+    container_name: cet-realtime
+    depends_on:
+      cet-db:
+        condition: service_healthy
+    ports:
+      - "55425:4000"
+    environment:
+      PORT: 4000
+      DB_HOST: cet-db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: "SET search_path TO realtime,public"
+      DB_ENC_KEY: supabaserealtimeencryptionkey123
+      FLY_APP_NAME: realtime
+      APP_NAME: realtime
+      SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgC9fS2miUbYJays15KKBnOHR4cd3g==
+      METRICS_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      ENABLE_TAILSCALE: "false"
+      DNS_NODES: "''"
+    restart: unless-stopped
+    networks:
+      - cet-network
+
+  # ── Storage ───────────────────────────────────────────────
+  cet-storage:
+    image: supabase/storage-api:v1.50.1
+    container_name: cet-storage
+    depends_on:
+      cet-db:
+        condition: service_healthy
+      cet-rest:
+        condition: service_started
+    ports:
+      - "55426:5000"
+    environment:
+      ANON_KEY: ${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}
+      SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU}
+      POSTGREST_URL: http://cet-rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD:-postgres}@cet-db:5432/postgres
+      FILE_STORAGE_BACKEND: file
+      FILE_STORAGE_FILE_PATH: /var/lib/storage
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+    volumes:
+      - storage-data:/var/lib/storage
+    restart: unless-stopped
+    networks:
+      - cet-network
+
+  # ── Studio ────────────────────────────────────────────────
+  cet-studio:
+    image: supabase/studio:2026.04.08-sha-205cbe7
+    container_name: cet-studio
+    depends_on:
+      cet-db:
+        condition: service_healthy
+    ports:
+      - "55423:3000"
+    environment:
+      STUDIO_PG_META_URL: http://cet-meta:8080
+      STUDIO_DEFAULT_PROJECT_NAME: CET Local
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SUPABASE_URL: http://cet-rest:3000
+      SUPABASE_PUBLIC_URL: http://localhost:55421
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU}
+      AUTH_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      STUDIO_DEFAULT_ORGANIZATION_ID: cet-local
+      STUDIO_DEFAULT_PROJECT_ID: cet-local
+      SNIPPETS_MANAGEMENT_FOLDER: /var/lib/studio/snippets
+    restart: unless-stopped
+    networks:
+      - cet-network
+
+  # ── Postgres Meta ─────────────────────────────────────────
+  cet-meta:
+    image: supabase/postgres-meta:v0.96.4
+    container_name: cet-meta
+    depends_on:
+      cet-db:
+        condition: service_healthy
+    ports:
+      - "55427:8080"
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: cet-db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    restart: unless-stopped
+    networks:
+      - cet-network
+
+  # ── CET Backend (FastAPI) ─────────────────────────────────
+  cet-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: cet-backend
+    depends_on:
+      cet-db:
+        condition: service_healthy
+      cet-auth:
+        condition: service_started
+      cet-rest:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - cet-network
+
+  # ── CET Frontend (Next.js) ────────────────────────────────
+  cet-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cet-frontend
+    depends_on:
+      cet-backend:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env.local
+    restart: unless-stopped
+    networks:
+      - cet-network
+
+# ── Network ─────────────────────────────────────────────────
+networks:
+  cet-network:
+    driver: bridge
+
+# ── Volumes ─────────────────────────────────────────────────
+volumes:
+  postgres-data:
+  storage-data:

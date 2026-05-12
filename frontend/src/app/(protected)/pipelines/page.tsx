@@ -7,8 +7,10 @@ export const metadata: Metadata = { title: 'Pipelines — CET' }
 
 export default function PipelinesPage() {
   return (
-    <Suspense fallback={<PipelinesSkeleton />}>
-      <PipelinesPageContent />
-    </Suspense>
+    <div className="flex-1 overflow-y-auto">
+      <Suspense fallback={<PipelinesSkeleton />}>
+        <PipelinesPageContent />
+      </Suspense>
+    </div>
   )
 }

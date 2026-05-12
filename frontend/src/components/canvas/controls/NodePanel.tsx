@@ -130,7 +130,9 @@ export function NodePanel() {
                     onClick={() => handleAdd(node.type, node.defaultData)}
                     className={`
                       w-full flex items-center gap-2.5 px-3 py-2 rounded-md border
-                      text-left text-xs font-medium transition-colors
+                      text-left text-xs font-medium cursor-grab active:cursor-grabbing
+                      hover:scale-[1.02] hover:shadow-sm hover:shadow-white/5
+                      transition-all duration-150
                       ${node.bg} ${node.color}
                     `}
                   >

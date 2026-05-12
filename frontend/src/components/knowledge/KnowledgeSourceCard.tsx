@@ -62,11 +62,11 @@ export const KnowledgeSourceCard = memo(function KnowledgeSourceCard({ source, o
       <div className="flex items-center gap-4 text-[11px] text-zinc-500">
         <span className="flex items-center gap-1">
           <FileText className="h-3 w-3" />
-          {source.document_count.toLocaleString()} docs
+          {(source.document_count ?? 0).toLocaleString()} docs
         </span>
         <span className="flex items-center gap-1">
           <Layers className="h-3 w-3" />
-          {source.chunk_count.toLocaleString()} chunks
+          {(source.chunk_count ?? 0).toLocaleString()} chunks
         </span>
       </div>
 
@@ -76,13 +76,13 @@ export const KnowledgeSourceCard = memo(function KnowledgeSourceCard({ source, o
           <Icon className={`h-2.5 w-2.5 ${source.status === 'processing' ? 'animate-spin' : ''}`} />
           {cfg.label}
         </Badge>
-        <span className="text-[10px] text-zinc-600">
-          {formatDistanceToNow(new Date(source.updated_at), { addSuffix: true })}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <ExternalLink className="h-3 w-3 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <span className="text-[10px] text-zinc-600">
+            {formatDistanceToNow(new Date(source.updated_at), { addSuffix: true })}
+          </span>
+        </div>
       </div>
-
-      {/* Open indicator on hover */}
-      <ExternalLink className="absolute bottom-4 right-4 h-3 w-3 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
     </div>
   )
 })

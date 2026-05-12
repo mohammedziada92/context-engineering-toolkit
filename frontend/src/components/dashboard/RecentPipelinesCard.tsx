@@ -63,7 +63,7 @@ export function RecentPipelinesCard({ pipelines, loading }: Props) {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-zinc-200 truncate">{p.name}</p>
                 <p className="text-[10px] text-zinc-600">
-                  {modelShortname(p.model)} · {p.run_count} runs
+                  {p.model ? `${modelShortname(p.model)} · ` : ''}{p.run_count ?? 0} run{(p.run_count ?? 0) !== 1 ? 's' : ''}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
@@ -75,7 +75,8 @@ export function RecentPipelinesCard({ pipelines, loading }: Props) {
                       : 'bg-zinc-800 text-zinc-500'
                   }`}
                 >
-                  {p.status}
+                  <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${p.status === 'active' ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+                  {p.status === 'active' ? 'Active' : 'Draft'}
                 </Badge>
                 <p className="text-[10px] text-zinc-700">
                   {formatDistanceToNow(new Date(p.updated_at), { addSuffix: true })}

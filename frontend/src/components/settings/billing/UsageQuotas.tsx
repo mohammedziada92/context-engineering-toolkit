@@ -9,25 +9,26 @@ interface QuotaRow {
 
 interface Props {
   quotas?: {
-    pipelines: number
-    knowledge_sources: number
-    chunks: number
-    runs_this_month: number
-    resets_at: string
+    pipelines?: number
+    knowledge_sources?: number
+    chunks?: number
+    runs_this_month?: number
+    resets_at?: string
   }
+  loading?: boolean
 }
 
-export function UsageQuotas({ quotas }: Props) {
+export function UsageQuotas({ quotas, loading }: Props) {
   const resetDate = quotas?.resets_at
     ? new Date(quotas.resets_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
     : null
 
   const rows: QuotaRow[] = quotas
     ? [
-        { label: 'Pipelines created', used: quotas.pipelines, limit: 'Unlimited' },
-        { label: 'Knowledge sources', used: quotas.knowledge_sources, limit: 'Unlimited' },
-        { label: 'Chunks indexed', used: quotas.chunks, limit: 'Unlimited', unit: 'chunks' },
-        { label: 'Runs this month', used: quotas.runs_this_month, limit: 'Unlimited' },
+        { label: 'Pipelines created', used: quotas.pipelines ?? 0, limit: 'Unlimited' },
+        { label: 'Knowledge sources', used: quotas.knowledge_sources ?? 0, limit: 'Unlimited' },
+        { label: 'Chunks indexed', used: quotas.chunks ?? 0, limit: 'Unlimited', unit: 'chunks' },
+        { label: 'Runs this month', used: quotas.runs_this_month ?? 0, limit: 'Unlimited' },
       ]
     : []
 
@@ -38,7 +39,7 @@ export function UsageQuotas({ quotas }: Props) {
         {resetDate && <p className="text-xs text-zinc-500">Resets {resetDate}</p>}
       </div>
 
-      {!quotas ? (
+      {loading || !quotas ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between">
@@ -54,7 +55,7 @@ export function UsageQuotas({ quotas }: Props) {
               <span className="text-sm text-zinc-400">{label}</span>
               <div className="text-right">
                 <span className="text-sm font-medium text-zinc-200 tabular-nums">
-                  {used.toLocaleString()}{unit ? ` ${unit}` : ''}
+                  {(used ?? 0).toLocaleString()}{unit ? ` ${unit}` : ''}
                 </span>
                 <span className="text-xs text-zinc-500 ml-2">{limit}</span>
               </div>

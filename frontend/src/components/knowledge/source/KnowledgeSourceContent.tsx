@@ -33,7 +33,7 @@ export function KnowledgeSourceContent({ id }: { id: string }) {
   const [tab,         setTab]         = useState<Tab>('ingest')
   const [deleteOpen,  setDeleteOpen]  = useState(false)
 
-  const { data: source, isLoading, refetch } = useQuery({
+  const { data: source, isLoading, isRefetching, refetch } = useQuery({
     queryKey: ['knowledge-source', id],
     queryFn:  () => getKnowledgeSource(id),
     staleTime: 15_000,
@@ -54,7 +54,7 @@ export function KnowledgeSourceContent({ id }: { id: string }) {
   if (isLoading || !source) return null  // Suspense fallback handles loading
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Top bar */}
       <div className="flex items-center gap-3 px-6 py-4 border-b border-zinc-800">
         <Button
@@ -82,10 +82,13 @@ export function KnowledgeSourceContent({ id }: { id: string }) {
         <Button
           variant="ghost" size="icon"
           className="h-7 w-7 text-zinc-400 hover:text-zinc-200"
-          onClick={() => refetch()}
+          onClick={() => {
+            refetch()
+            qc.invalidateQueries({ queryKey: ['chunks', id] })
+          }}
           title="Refresh"
         >
-          <RefreshCw className="h-3.5 w-3.5" />
+          <RefreshCw className={`h-3.5 w-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
         </Button>
 
         <Button

@@ -3,6 +3,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api/api'
 import { Label } from '@/components/ui/label'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { BookOpen } from 'lucide-react'
 
 interface Props {
@@ -24,7 +27,10 @@ export function KBAttachmentPanel({
 }: Props) {
   const { data: sources = [] } = useQuery({
     queryKey: ['knowledge-ready'],
-    queryFn: () => apiFetch('/api/v1/knowledge?status=ready&limit=50'),
+    queryFn: async () => {
+      const res = await apiFetch<{ items: any[]; total: number }>('/api/v1/knowledge?status=ready&limit=50')
+      return res.items ?? []
+    },
     staleTime: 60_000,
   })
 
@@ -35,18 +41,25 @@ export function KBAttachmentPanel({
         <Label className="text-xs font-medium text-zinc-400">Knowledge Base</Label>
       </div>
 
-      <select
-        value={knowledgeSourceId ?? ''}
-        onChange={(e) => onKBChange(e.target.value || null)}
-        className="w-full h-8 rounded-md border border-zinc-700 bg-zinc-800 px-3 text-xs text-zinc-300 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
-      >
-        <option value="">None</option>
-        {(sources as any[]).map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name} ({s.total_chunks?.toLocaleString() ?? 0} chunks)
-          </option>
-        ))}
-      </select>
+      <Select value={knowledgeSourceId ?? 'none'} onValueChange={(v) => onKBChange(v === 'none' ? null : v)}>
+        <SelectTrigger className="h-8 bg-zinc-900 border-zinc-700 text-zinc-100 text-xs hover:bg-zinc-800">
+          <SelectValue placeholder="None">
+            {(value: string | null) => {
+              if (!value || value === 'none') return 'None'
+              const source = sources.find((s) => s.id === value)
+              return source?.name ?? value
+            }}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent className="bg-zinc-900 border-zinc-800">
+          <SelectItem value="none" className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100">None</SelectItem>
+          {sources.map((s) => (
+            <SelectItem key={s.id} value={s.id} className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100">
+              {s.name} <span className="text-zinc-500">({s.total_chunks?.toLocaleString() ?? 0} chunks)</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {knowledgeSourceId && (
         <div className="grid grid-cols-2 gap-2">
@@ -73,7 +86,7 @@ export function KBAttachmentPanel({
         </div>
       )}
 
-      {(sources as any[]).length === 0 && (
+      {sources.length === 0 && (
         <p className="text-xs text-zinc-600">
           No ready knowledge sources.{' '}
           <a href="/knowledge" className="text-violet-400 hover:text-violet-300">Upload one</a>.

@@ -16,7 +16,6 @@ export function AuthGuard({ children }: Props) {
   useEffect(() => {
     if (!initialized) return
     if (!loading && !session) {
-      // Preserve intended destination for post-login redirect
       const next = encodeURIComponent(pathname)
       router.replace(`/login?next=${next}`)
     }
@@ -34,7 +33,7 @@ export function AuthGuard({ children }: Props) {
     )
   }
 
-  if (!session) return null   // redirect in-flight; render nothing
+  if (!session) return null
 
   return <>{children}</>
 }

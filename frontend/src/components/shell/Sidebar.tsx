@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useRouter }   from 'next/navigation'
 import {
   Layers, LayoutDashboard, GitBranch,
-  Database, BarChart2, Settings, LogOut,
+  Database, Gamepad2, BarChart2, Settings, LogOut,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 import { cn } from '@/lib/utils'
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'  },
   { href: '/pipelines',  icon: GitBranch,       label: 'Pipelines'  },
   { href: '/knowledge',  icon: Database,        label: 'Knowledge'  },
+  { href: '/playground', icon: Gamepad2,        label: 'Playground' },
   { href: '/analytics',  icon: BarChart2,       label: 'Analytics'  },
   { href: '/settings',   icon: Settings,        label: 'Settings'   },
 ]
@@ -73,12 +74,21 @@ export function Sidebar({ onClose }: Props) {
       {/* User footer */}
       <div className="px-2 py-3 border-t border-zinc-800 shrink-0 space-y-0.5">
         <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
-          {/* Avatar — initials fallback */}
-          <div className="h-6 w-6 rounded-full bg-violet-700 flex items-center justify-center shrink-0">
-            <span className="text-[10px] font-semibold text-white uppercase">
-              {user?.email?.[0] ?? '?'}
-            </span>
-          </div>
+          {/* Avatar */}
+          {user?.user_metadata?.avatar_url ? (
+            <img
+              src={user.user_metadata.avatar_url}
+              alt=""
+              className="h-6 w-6 rounded-full shrink-0 object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="h-6 w-6 rounded-full bg-violet-700 flex items-center justify-center shrink-0">
+              <span className="text-[10px] font-semibold text-white uppercase">
+                {user?.email?.[0] ?? '?'}
+              </span>
+            </div>
+          )}
           <p className="text-[11px] text-zinc-400 truncate flex-1">{user?.email}</p>
         </div>
 

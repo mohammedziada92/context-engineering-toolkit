@@ -1,5 +1,4 @@
 from typing import Optional
-from yarl import URL
 from supabase import create_client, Client
 
 from app.core.config import settings
@@ -7,14 +6,13 @@ from app.core.config import settings
 
 def _get_client() -> Client:
     client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-    client.postgrest.base_url = URL(settings.SUPABASE_URL)
     return client
 
 SORT_COLUMNS = {
-    "updated_at": "updated_at",
-    "created_at": "created_at",
-    "name":       "name",
-    "run_count":  "run_count",
+    "updated_at": ("updated_at", True),
+    "created_at": ("created_at", True),
+    "name":       ("name", False),
+    "run_count":  ("run_count", True),
 }
 
 
@@ -27,14 +25,12 @@ async def list_pipelines(
     search: Optional[str] = None,
 ) -> dict:
     client  = _get_client()
-    col     = SORT_COLUMNS.get(sort, "updated_at")
     offset  = (page - 1) * limit
 
     q = (
         client.table("pipelines")
         .select("*", count="exact")
         .eq("user_id", user_id)
-        .order(col, desc=True)
         .range(offset, offset + limit - 1)
     )
     if status:
@@ -45,15 +41,16 @@ async def list_pipelines(
     result = q.execute()
     items  = result.data or []
 
-    # Enrich with run_count from pipeline_runs
+    # Enrich with run_count from pipeline_runs + map is_active → status
     for item in items:
         rc = (
-            client.table("pipelineruns")
+            client.table("pipeline_runs")
             .select("id", count="exact")
             .eq("pipeline_id", item["id"])
             .execute()
         )
         item["run_count"] = rc.count or 0
+        item["status"] = "active" if item.get("is_active") else "draft"
 
     return {
         "items": items,
@@ -77,12 +74,13 @@ async def get_pipeline(user_id: str, pipeline_id: str) -> Optional[dict]:
         return None
     pipeline = result.data
     rc = (
-        client.table("pipelineruns")
+        client.table("pipeline_runs")
         .select("id", count="exact")
         .eq("pipeline_id", pipeline_id)
         .execute()
     )
     pipeline["run_count"] = rc.count or 0
+    pipeline["status"] = "active" if pipeline.get("is_active") else "draft"
     return pipeline
 
 
@@ -102,6 +100,7 @@ async def create_pipeline(user_id: str, body) -> dict:
     )
     pipeline = result.data[0]
     pipeline["run_count"] = 0
+    pipeline["status"] = "active" if pipeline.get("is_active") else "draft"
     return pipeline
 
 
@@ -115,12 +114,17 @@ async def update_pipeline(user_id: str, pipeline_id: str, body) -> dict:
         .eq("user_id", user_id)
         .execute()
     )
-    return result.data[0]
+    pipeline = result.data[0]
+    pipeline["status"] = "active" if pipeline.get("is_active") else "draft"
+    return pipeline
 
 
 async def patch_pipeline(user_id: str, pipeline_id: str, body) -> dict:
     client  = _get_client()
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
+    # Map status string → is_active boolean for DB
+    if "status" in payload:
+        payload["is_active"] = payload.pop("status") == "active"
     result  = (
         client.table("pipelines")
         .update(payload)
@@ -128,7 +132,9 @@ async def patch_pipeline(user_id: str, pipeline_id: str, body) -> dict:
         .eq("user_id", user_id)
         .execute()
     )
-    return result.data[0]
+    pipeline = result.data[0]
+    pipeline["status"] = "active" if pipeline.get("is_active") else "draft"
+    return pipeline
 
 
 async def delete_pipeline(user_id: str, pipeline_id: str) -> None:

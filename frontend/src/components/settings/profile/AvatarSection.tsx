@@ -6,6 +6,8 @@ import { toast } from 'sonner'
 import { Camera, Loader2 } from 'lucide-react'
 import { uploadAvatar, UserProfile } from '@/lib/api/settings'
 import { Skeleton } from '@/components/ui/skeleton'
+import { createClient } from '@/lib/supabase/client'
+import { useAuthStore } from '@/stores/auth.store'
 
 interface Props {
   profile?: UserProfile
@@ -26,8 +28,14 @@ export function AvatarSection({ profile, loading }: Props) {
 
   const { mutate, isPending } = useMutation({
     mutationFn: uploadAvatar,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       qc.setQueryData(['profile'], (old: UserProfile) => ({ ...old, avatar_url: data.avatar_url }))
+      // Force refresh Supabase Auth session and update store for sidebar
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.refreshSession()
+      if (session?.user) {
+        useAuthStore.setState({ user: session.user, session })
+      }
       setPreview(null)
       toast.success('Avatar updated')
     },

@@ -12,41 +12,46 @@ interface Props {
 export function DashboardStatsRow({ stats, loading }: Props) {
   const cards = [
     {
+      id:      'pipelines',
       icon:    GitBranch,
       label:   'Pipelines',
-      value:   stats?.pipeline_count.toLocaleString() ?? '—',
-      sub:     stats ? `${stats.active_pipelines} active` : '',
+      value:   stats?.pipeline_count != null ? stats.pipeline_count.toLocaleString() : '—',
+      sub:     stats ? `${stats.active_pipelines ?? 0} active` : '',
       color:   'text-violet-400',
       bg:      'bg-violet-500/10',
     },
     {
+      id:      'knowledge',
       icon:    Database,
       label:   'Knowledge Sources',
-      value:   stats?.knowledge_source_count.toLocaleString() ?? '—',
+      value:   stats?.knowledge_source_count != null ? stats.knowledge_source_count.toLocaleString() : '—',
       sub:     'Vector databases',
       color:   'text-emerald-400',
       bg:      'bg-emerald-500/10',
     },
     {
+      id:      'runs',
       icon:    Play,
       label:   'Runs Today',
-      value:   stats?.total_runs_today.toLocaleString() ?? '—',
+      value:   stats?.total_runs_today != null ? stats.total_runs_today.toLocaleString() : '—',
       sub:     'Across all pipelines',
       color:   'text-blue-400',
       bg:      'bg-blue-500/10',
     },
     {
+      id:      'tokens',
       icon:    TrendingUp,
       label:   'Tokens Today',
-      value:   stats ? formatTokens(stats.total_tokens_today) : '—',
+      value:   stats?.total_tokens_today != null ? formatTokens(stats.total_tokens_today) : '—',
       sub:     'Input + output',
       color:   'text-amber-400',
       bg:      'bg-amber-500/10',
     },
     {
+      id:      'cost',
       icon:    Coins,
       label:   'Cost Today',
-      value:   stats ? formatCost(stats.total_cost_today_usd) : '—',
+      value:   stats?.total_cost_today_usd != null ? formatCost(stats.total_cost_today_usd) : '—',
       sub:     'OpenRouter charges',
       color:   'text-emerald-400',
       bg:      'bg-emerald-500/10',
@@ -55,8 +60,8 @@ export function DashboardStatsRow({ stats, loading }: Props) {
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      {cards.map(({ icon: Icon, label, value, sub, color, bg }) => (
-        <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+      {cards.map(({ id, icon: Icon, label, value, sub, color, bg }) => (
+        <div key={id} className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
           <div className={`inline-flex h-8 w-8 rounded-lg items-center justify-center mb-3 ${bg}`}>
             <Icon className={`h-4 w-4 ${color}`} />
           </div>

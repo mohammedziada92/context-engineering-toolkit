@@ -5,9 +5,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   postChatStream,
   createSession,
-  updateSession,
-  listSessions,
   getSession,
+  deleteSession,
+  updateSession,
   type ChatPayload,
   type SessionExport,
   type Session,
@@ -16,7 +16,6 @@ import {
 import { PipelineModeToggle } from './PipelineModeToggle'
 import { KBAttachmentPanel } from './KBAttachmentPanel'
 import { RAGContextInspector } from './RAGContextInspector'
-import { SessionHistoryDropdown } from './SessionHistoryDropdown'
 import { SaveAsPipelineModal } from './SaveAsPipelineModal'
 import { ExportChatMenu } from './ExportChatMenu'
 import { ModelSelector } from '@/components/shared/ModelSelector'
@@ -25,9 +24,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Send, Square, Trash2, Sparkles, Layers } from 'lucide-react'
+import {
+  ArrowUp, Square, Trash2, Sparkles, Layers,
+  MessageSquare, Plus, ChevronDown, ChevronRight,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
-import Link from 'next/link'
 
 // ── Types ────────────────────────────────────────────────────
 type Mode = 'direct' | 'pipeline'
@@ -75,9 +76,19 @@ const QUICK_STARTS = [
   'Write a Python function',
 ]
 
-// ── Token counter (tiktoken approximation: ~4 chars/token) ───
 function approxTokens(text: string) { return Math.ceil(text.length / 4) }
 
+function relativeTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const min = Math.floor(diff / 60000)
+  if (min < 1) return 'just now'
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// ── Component ────────────────────────────────────────────────
 export function PlaygroundPageContent() {
   const qc = useQueryClient()
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG)
@@ -86,17 +97,19 @@ export function PlaygroundPageContent() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [streaming, setStreaming] = useState(false)
   const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const [paramsOpen, setParamsOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const creatingSessionRef = useRef(false)
+  const renamedRef = useRef(false)
 
   const { data: sessions } = useQuery<Session[]>({
     queryKey: ['playground-sessions'],
-    queryFn: listSessions,
+    queryFn: () => import('@/lib/api/playground').then((m) => m.listSessions()),
     staleTime: 30_000,
   })
 
-  // Auto-scroll on new content
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
@@ -105,21 +118,44 @@ export function PlaygroundPageContent() {
     setConfig((c) => ({ ...c, ...patch }))
   }
 
-  // ── Session operations ────────────────────────────────────
+  // ── Session operations ─────────────────────────────────────
   async function loadSession(id: string) {
     const s = await getSession(id)
     setSessionId(s.id)
-    setMessages(s.messages ?? [])
-    patchConfig({ ...DEFAULT_CONFIG, mode: s.mode, pipeline_id: s.pipeline_id, ...s.config })
+    renamedRef.current = (s.messages?.length ?? 0) > 0
+    setMessages(
+      (s.messages ?? []).map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        retrieved_chunks: (m.retrieved_chunks as Message['retrieved_chunks']) ?? undefined,
+      }))
+    )
+    patchConfig({ ...DEFAULT_CONFIG, mode: s.mode, pipeline_id: s.pipeline_id, ...s.config as Partial<Config> })
   }
 
   function clearChat() {
     setMessages([])
     setSessionId(null)
     setConfig(DEFAULT_CONFIG)
+    renamedRef.current = false
   }
 
-  // ── Send message ─────────────────────────────────────────
+  async function handleDeleteSession(id: string) {
+    // Optimistic: remove from cache immediately
+    qc.setQueryData<Session[]>(['playground-sessions'], (old) =>
+      old ? old.filter((s) => s.id !== id) : old
+    )
+    if (sessionId === id) clearChat()
+    try {
+      await deleteSession(id)
+    } catch {
+      // Rollback on failure
+      qc.invalidateQueries({ queryKey: ['playground-sessions'] })
+    }
+  }
+
+  // ── Send message ───────────────────────────────────────────
   async function sendMessage(text?: string) {
     const content = (text ?? input).trim()
     if (!content || streaming) return
@@ -127,33 +163,49 @@ export function PlaygroundPageContent() {
 
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content }
     const assistantId = crypto.randomUUID()
-    const assistantMsg: Message = { id: assistantId, role: 'assistant', content: '', streaming: true }
 
-    setMessages((m) => [...m, userMsg, assistantMsg])
+    // Show user message immediately, assistant bubble only when stream starts
+    setMessages((m) => [...m, userMsg])
     setStreaming(true)
 
-    // Ensure session exists
     let sid = sessionId
     if (!sid) {
-      const session = await createSession({
-        mode: config.mode,
-        pipeline_id: config.pipeline_id,
-        config: {
-          model: config.model,
-          system_prompt: config.system_prompt,
-          temperature: config.temperature,
-          max_tokens: config.max_tokens,
-          top_p: config.top_p,
-          stream: config.stream,
-          knowledge_source_id: config.knowledge_source_id,
-          top_k: config.top_k,
-          threshold: config.threshold,
-        },
-      })
-      sid = session.id
-      setSessionId(sid)
-      qc.invalidateQueries({ queryKey: ['playground-sessions'] })
+      if (creatingSessionRef.current) {
+        setMessages((m) => m.filter((msg) => msg.id !== userMsg.id))
+        setStreaming(false)
+        return
+      }
+      creatingSessionRef.current = true
+      try {
+        const session = await createSession({
+          mode: config.mode,
+          pipeline_id: config.pipeline_id,
+          config: {
+            model: config.model,
+            system_prompt: config.system_prompt,
+            temperature: config.temperature,
+            max_tokens: config.max_tokens,
+            top_p: config.top_p,
+            stream: config.stream,
+            knowledge_source_id: config.knowledge_source_id,
+            top_k: config.top_k,
+            threshold: config.threshold,
+          },
+        })
+        sid = session.id
+        setSessionId(sid)
+        qc.invalidateQueries({ queryKey: ['playground-sessions'] })
+      } catch {
+        setMessages((m) => [...m, { id: assistantId, role: 'assistant', content: '*Error: Failed to create session.*', streaming: false }])
+        setStreaming(false)
+        return
+      } finally {
+        creatingSessionRef.current = false
+      }
     }
+
+    // Add assistant placeholder right before stream begins
+    setMessages((m) => [...m, { id: assistantId, role: 'assistant', content: '', streaming: true }])
 
     const payload: ChatPayload = {
       session_id: sid!,
@@ -190,17 +242,14 @@ export function PlaygroundPageContent() {
           const data = JSON.parse(line.slice(6))
 
           if (data.content !== undefined && !data.status) {
-            // Token delta from LLM stream
             setMessages((m) =>
               m.map((msg) =>
                 msg.id === assistantId ? { ...msg, content: msg.content + data.content } : msg
               )
             )
           } else if (data.chunks) {
-            // RAG retrieved chunks
             retrievedChunks = data.chunks
           } else if (data.status === 'done') {
-            // Stream complete — extract analytics
             const a = data.analytics ?? {}
             finalMeta = {
               tokens_in: a.prompt_tokens ?? 0,
@@ -240,15 +289,20 @@ export function PlaygroundPageContent() {
       )
       setStreaming(false)
       abortRef.current = null
+      // Auto-rename session after first message
+      if (sid && messages.length === 0 && !renamedRef.current) {
+        renamedRef.current = true
+        const title = content.length > 40 ? content.slice(0, 40).trimEnd() + '…' : content
+        updateSession(sid, { name: title }).catch(() => {})
+        qc.invalidateQueries({ queryKey: ['playground-sessions'] })
+      }
     }
   }
 
   function stopStreaming() {
     abortRef.current?.abort()
     setStreaming(false)
-    setMessages((m) =>
-      m.map((msg) => (msg.streaming ? { ...msg, streaming: false } : msg))
-    )
+    setMessages((m) => m.map((msg) => (msg.streaming ? { ...msg, streaming: false } : msg)))
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -259,7 +313,7 @@ export function PlaygroundPageContent() {
     if (e.key === 'Escape') stopStreaming()
   }
 
-  // ── Session totals ────────────────────────────────────────
+  // ── Session totals ─────────────────────────────────────────
   const sessionTokens = messages
     .filter((m) => m.meta)
     .reduce((s, m) => s + (m.meta!.tokens_in + m.meta!.tokens_out), 0)
@@ -267,7 +321,6 @@ export function PlaygroundPageContent() {
     .filter((m) => m.meta)
     .reduce((s, m) => s + m.meta!.cost_usd, 0)
 
-  // ── Export data ───────────────────────────────────────────
   const sessionExport: SessionExport = {
     created_at: new Date().toISOString(),
     config: config as unknown as Record<string, unknown>,
@@ -282,172 +335,103 @@ export function PlaygroundPageContent() {
   }
 
   const systemPromptTokens = approxTokens(config.system_prompt)
-  const isSystemPromptWarning = systemPromptTokens > 3500
   const isSystemPromptError = systemPromptTokens > 4000
 
+  // ── Render ─────────────────────────────────────────────────
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex flex-1 min-h-0 overflow-hidden">
 
-      {/* ── Config Panel ──────────────────────────────────── */}
-      <aside className="hidden md:flex w-[360px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-900/50 overflow-y-auto">
-        <div className="p-4 space-y-5">
+      {/* ══ LEFT: Sessions Sidebar ═══════════════════════════ */}
+      <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-zinc-800 bg-zinc-900/50">
+        {/* Header */}
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-zinc-800">
+          <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Sessions</span>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 text-zinc-500 hover:text-zinc-200"
+            onClick={() => clearChat()}
+            title="New chat"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </div>
 
-          {/* Mode Toggle */}
-          <PipelineModeToggle
-            mode={config.mode}
-            pipelineId={config.pipeline_id}
-            onModeChange={(mode) => patchConfig({ mode, pipeline_id: null })}
-            onPipelineChange={(pipeline_id) => patchConfig({ pipeline_id })}
-          />
-
-          {config.mode === 'direct' && (
-            <>
-              {/* Model Selector */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-zinc-400">Model</Label>
-                <ModelSelector
-                  value={config.model}
-                  onChange={(model) => patchConfig({ model })}
-                />
-              </div>
-
-              {/* System Prompt */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-zinc-400">System Prompt</Label>
-                  <span className={cn(
-                    'text-xs tabular-nums',
-                    isSystemPromptError ? 'text-red-400' :
-                    isSystemPromptWarning ? 'text-amber-400' :
-                    'text-zinc-500'
-                  )}>
-                    {systemPromptTokens.toLocaleString()} / 4,000 tokens
-                  </span>
+        {/* Session list */}
+        <div className="flex-1 overflow-y-auto">
+          {sessions && sessions.length > 0 ? (
+            <div className="py-1">
+              {sessions.map((s) => (
+                <div
+                  key={s.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => loadSession(s.id)}
+                  onKeyDown={(e) => e.key === 'Enter' && loadSession(s.id)}
+                  className={cn(
+                    'w-full text-left px-3 py-2 transition-colors group cursor-pointer',
+                    sessionId === s.id
+                      ? 'bg-zinc-800/80 border-l-2 border-violet-500'
+                      : 'hover:bg-zinc-800/40 border-l-2 border-transparent'
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-3.5 w-3.5 text-zinc-600 shrink-0" />
+                    <span className="text-xs text-zinc-300 truncate flex-1">{s.name}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id) }}
+                      className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 transition-all"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <div className="ml-5.5 mt-0.5 flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-600">
+                      {s.message_count} msg{s.message_count !== 1 ? 's' : ''}
+                    </span>
+                    <span className="text-[10px] text-zinc-600">·</span>
+                    <span className="text-[10px] text-zinc-600">{relativeTime(s.updated_at)}</span>
+                  </div>
                 </div>
-                <Textarea
-                  value={config.system_prompt}
-                  onChange={(e) => patchConfig({ system_prompt: e.target.value })}
-                  placeholder="You are a helpful assistant."
-                  className="min-h-[120px] max-h-[260px] resize-none bg-zinc-800 border-zinc-700 text-zinc-200 text-sm font-mono placeholder:text-zinc-500 focus:border-violet-500"
-                />
-                {isSystemPromptError && (
-                  <p className="text-xs text-red-400">System prompt too long — must be under 4,000 tokens.</p>
-                )}
-              </div>
-
-              {/* Temperature */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-zinc-400">Temperature</Label>
-                  <span className="text-xs text-zinc-300 tabular-nums">{config.temperature.toFixed(1)}</span>
-                </div>
-                <Slider
-                  min={0} max={1} step={0.1}
-                  value={[config.temperature]}
-                  onValueChange={([v]) => patchConfig({ temperature: v })}
-                  className="[&_[role=slider]]:bg-violet-500"
-                />
-                <div className="flex justify-between text-xs text-zinc-600">
-                  <span>Precise</span><span>Creative</span>
-                </div>
-              </div>
-
-              {/* Max Tokens */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-zinc-400">Max Output Tokens</Label>
-                <input
-                  type="number"
-                  min={1} max={8192}
-                  value={config.max_tokens}
-                  onChange={(e) => patchConfig({ max_tokens: Number(e.target.value) })}
-                  className="w-full h-8 rounded-md border border-zinc-700 bg-zinc-800 px-3 text-sm text-zinc-200 tabular-nums focus:outline-none focus:border-violet-500 transition-colors"
-                />
-              </div>
-
-              {/* Top P */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-zinc-400">Top P</Label>
-                  <span className="text-xs text-zinc-300 tabular-nums">{config.top_p.toFixed(1)}</span>
-                </div>
-                <input
-                  type="number"
-                  min={0} max={1} step={0.1}
-                  value={config.top_p}
-                  onChange={(e) => patchConfig({ top_p: Number(e.target.value) })}
-                  className="w-full h-8 rounded-md border border-zinc-700 bg-zinc-800 px-3 text-sm text-zinc-200 tabular-nums focus:outline-none focus:border-violet-500 transition-colors"
-                />
-              </div>
-
-              {/* Stream Toggle */}
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium text-zinc-400">Streaming</Label>
-                <Switch
-                  checked={config.stream}
-                  onCheckedChange={(stream) => patchConfig({ stream })}
-                />
-              </div>
-            </>
-          )}
-
-          {/* KB Attachment — both modes */}
-          <KBAttachmentPanel
-            knowledgeSourceId={config.knowledge_source_id}
-            topK={config.top_k}
-            threshold={config.threshold}
-            onKBChange={(knowledge_source_id) => patchConfig({ knowledge_source_id })}
-            onTopKChange={(top_k) => patchConfig({ top_k })}
-            onThresholdChange={(threshold) => patchConfig({ threshold })}
-          />
-
-          {/* Save as Pipeline (Direct mode only) */}
-          {config.mode === 'direct' && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full border-zinc-700 text-zinc-300 hover:text-zinc-100 gap-2 text-xs"
-              onClick={() => setSaveModalOpen(true)}
-            >
-              <Layers className="h-3.5 w-3.5 text-violet-400" />
-              Save as Pipeline
-            </Button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <MessageSquare className="h-6 w-6 text-zinc-700" />
+              <p className="text-xs text-zinc-600">No sessions yet</p>
+            </div>
           )}
         </div>
       </aside>
 
-      {/* ── Chat Panel ────────────────────────────────────── */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      {/* ══ CENTER: Chat Area ════════════════════════════════ */}
+      <div className="flex flex-1 flex-col min-w-0 bg-zinc-950">
 
         {/* Top bar */}
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2.5 bg-zinc-900/40">
-          <div className="flex items-center gap-2">
-            <SessionHistoryDropdown
-              sessions={sessions ?? []}
-              activeSessionId={sessionId}
-              onSelect={loadSession}
-              onDeleteAll={async () => {
-                clearChat()
-                qc.invalidateQueries({ queryKey: ['playground-sessions'] })
-              }}
+        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2 shrink-0">
+          <div className="flex items-center gap-3">
+            <PipelineModeToggle
+              mode={config.mode}
+              pipelineId={config.pipeline_id}
+              onModeChange={(mode) => patchConfig({ mode, pipeline_id: null })}
+              onPipelineChange={(pipeline_id) => patchConfig({ pipeline_id })}
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-zinc-500 hover:text-zinc-200"
-              onClick={clearChat}
-              title="Clear chat (Ctrl+L)"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
           </div>
           <div className="flex items-center gap-2">
             {messages.length > 0 && (
-              <div className="hidden sm:flex items-center gap-3 mr-2">
-                <span className="text-xs text-zinc-500 tabular-nums">
-                  {messages.length} msgs · {sessionTokens.toLocaleString()} tokens · ${sessionCost.toFixed(4)}
-                </span>
-              </div>
+              <span className="hidden sm:inline text-xs text-zinc-500 tabular-nums">
+                {messages.length} msgs · {sessionTokens.toLocaleString()} tokens · ${sessionCost.toFixed(4)}
+              </span>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-zinc-500 hover:text-zinc-200"
+              onClick={clearChat}
+              title="Clear chat"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
             <ExportChatMenu session={sessionExport} disabled={messages.length === 0} />
           </div>
         </div>
@@ -460,12 +444,8 @@ export function PlaygroundPageContent() {
                 <Sparkles className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="font-semibold text-zinc-200 mb-1">
-                  Test any model or pipeline
-                </h3>
-                <p className="text-sm text-zinc-500">
-                  Real-time streaming. Attach a knowledge base for RAG.
-                </p>
+                <h3 className="font-semibold text-zinc-200 mb-1">Test any model or pipeline</h3>
+                <p className="text-sm text-zinc-500">Real-time streaming. Attach a knowledge base for RAG.</p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
                 {QUICK_STARTS.map((q) => (
@@ -496,7 +476,6 @@ export function PlaygroundPageContent() {
                   )}
                 </div>
 
-                {/* Message meta */}
                 {msg.role === 'assistant' && msg.meta && !msg.streaming && (
                   <div className="flex items-center gap-2 text-xs text-zinc-500 tabular-nums ml-1">
                     <span>{msg.meta.tokens_in + msg.meta.tokens_out} tokens</span>
@@ -507,7 +486,6 @@ export function PlaygroundPageContent() {
                   </div>
                 )}
 
-                {/* RAG Context Inspector */}
                 {msg.role === 'assistant' && msg.retrieved_chunks && msg.retrieved_chunks.length > 0 && !msg.streaming && (
                   <RAGContextInspector chunks={msg.retrieved_chunks} />
                 )}
@@ -517,45 +495,176 @@ export function PlaygroundPageContent() {
         </div>
 
         {/* Input bar */}
-        <div className="border-t border-zinc-800 bg-zinc-900/60 p-4">
-          <div className="flex items-end gap-3">
-            <Textarea
+        <div className="px-4 pb-4 pt-2 shrink-0">
+          <div className="flex items-center gap-3 rounded-2xl border border-zinc-700/80 bg-zinc-800/80 pl-4 pr-2.5 py-2 focus-within:border-zinc-500 transition-colors">
+            <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Send a message… (Enter to send, Shift+Enter for new line)"
+              placeholder="Send a message…"
               disabled={streaming}
               rows={1}
-              className="flex-1 min-h-[44px] max-h-[144px] resize-none bg-zinc-800 border-zinc-700 text-zinc-200 placeholder:text-zinc-500 text-sm focus:border-violet-500 transition-colors"
+              className="flex-1 resize-none bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 max-h-36 outline-none"
             />
             {streaming ? (
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-11 w-11 border-zinc-600 text-zinc-300 hover:text-white hover:bg-red-500/10 hover:border-red-500/50 shrink-0"
+              <button
                 onClick={stopStreaming}
                 title="Stop (Escape)"
+                className="shrink-0 h-8 w-8 rounded-full bg-zinc-600 hover:bg-red-500/80 flex items-center justify-center transition-colors"
               >
-                <Square className="h-4 w-4" />
-              </Button>
+                <Square className="h-3.5 w-3.5 text-white fill-white" />
+              </button>
             ) : (
-              <Button
-                size="icon"
-                className="h-11 w-11 bg-violet-600 hover:bg-violet-500 text-white shrink-0"
+              <button
                 onClick={() => sendMessage()}
                 disabled={!input.trim() || isSystemPromptError}
                 title="Send (Enter)"
+                className="shrink-0 h-8 w-8 rounded-full bg-zinc-100 hover:bg-white flex items-center justify-center transition-colors disabled:bg-zinc-700 disabled:cursor-not-allowed"
               >
-                <Send className="h-4 w-4" />
-              </Button>
+                <ArrowUp className="h-4 w-4 text-zinc-900 disabled:text-zinc-400" />
+              </button>
             )}
           </div>
-          <p className="mt-1.5 text-xs text-zinc-600 text-center">
-            Enter to send · Shift+Enter new line · Escape to stop
-          </p>
         </div>
       </div>
+
+      {/* ══ RIGHT: Settings Panel ════════════════════════════ */}
+      <aside className="hidden lg:flex w-72 shrink-0 flex-col border-l border-zinc-800 bg-zinc-900/50">
+        <div className="px-4 py-2.5 border-b border-zinc-800">
+          <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Settings</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-5 [scrollbar-gutter:stable]">
+
+          {/* Model Selector — direct mode only */}
+          {config.mode === 'direct' && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-zinc-400">Model</Label>
+              <ModelSelector
+                value={config.model}
+                onChange={(model) => patchConfig({ model })}
+              />
+            </div>
+          )}
+
+          {/* System Prompt — direct mode only */}
+          {config.mode === 'direct' && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium text-zinc-400">System Prompt</Label>
+                <span className={cn(
+                  'text-xs tabular-nums',
+                  systemPromptTokens > 3500 ? (isSystemPromptError ? 'text-red-400' : 'text-amber-400') : 'text-zinc-500'
+                )}>
+                  {systemPromptTokens.toLocaleString()} / 4,000
+                </span>
+              </div>
+              <Textarea
+                value={config.system_prompt}
+                onChange={(e) => patchConfig({ system_prompt: e.target.value })}
+                placeholder="You are a helpful assistant."
+                className="min-h-25 max-h-50 resize-none bg-zinc-800 border-zinc-700 text-zinc-200 text-sm font-mono placeholder:text-zinc-500 focus:border-violet-500"
+              />
+              {systemPromptTokens > 3500 && !isSystemPromptError && (
+                <p className="text-xs text-amber-400">Approaching limit</p>
+              )}
+              {isSystemPromptError && (
+                <p className="text-xs text-red-400">System prompt too long.</p>
+              )}
+            </div>
+          )}
+
+          {/* Collapsible Parameters */}
+          {config.mode === 'direct' && (
+            <div>
+              <button
+                onClick={() => setParamsOpen((o) => !o)}
+                className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors w-full"
+              >
+                {paramsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                Parameters
+              </button>
+
+              {paramsOpen && (
+                <div className="mt-3 space-y-3">
+                  {/* Temperature */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-zinc-500">Temperature</Label>
+                      <span className="text-xs text-zinc-300 tabular-nums">{config.temperature.toFixed(1)}</span>
+                    </div>
+                    <Slider
+                      min={0} max={1} step={0.1}
+                      value={[config.temperature]}
+                      onValueChange={(v) => patchConfig({ temperature: typeof v === 'number' ? v : (v as number[])[0] })}
+                      className="**:[[role=slider]]:bg-violet-500"
+                    />
+                  </div>
+
+                  {/* Max Tokens */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-zinc-500">Max Tokens</Label>
+                    <input
+                      type="number"
+                      min={1} max={8192}
+                      value={config.max_tokens}
+                      onChange={(e) => patchConfig({ max_tokens: Number(e.target.value) })}
+                      className="w-full h-7 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 text-xs text-zinc-200 tabular-nums focus:outline-none focus:border-violet-500"
+                    />
+                  </div>
+
+                  {/* Top P */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-zinc-500">Top P</Label>
+                    <input
+                      type="number"
+                      min={0} max={1} step={0.1}
+                      value={config.top_p}
+                      onChange={(e) => patchConfig({ top_p: Number(e.target.value) })}
+                      className="w-full h-7 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 text-xs text-zinc-200 tabular-nums focus:outline-none focus:border-violet-500"
+                    />
+                  </div>
+
+                  {/* Stream Toggle */}
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-zinc-500">Streaming</Label>
+                    <Switch
+                      checked={config.stream}
+                      onCheckedChange={(stream) => patchConfig({ stream })}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* KB Attachment — both modes */}
+          <KBAttachmentPanel
+            knowledgeSourceId={config.knowledge_source_id}
+            topK={config.top_k}
+            threshold={config.threshold}
+            onKBChange={(knowledge_source_id) => patchConfig({ knowledge_source_id })}
+            onTopKChange={(top_k) => patchConfig({ top_k })}
+            onThresholdChange={(threshold) => patchConfig({ threshold })}
+          />
+        </div>
+
+        {/* Pinned footer — always visible */}
+        {config.mode === 'direct' && (
+          <div className="p-4 border-t border-zinc-800 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-zinc-700 text-zinc-300 hover:text-zinc-100 gap-2 text-xs"
+              onClick={() => setSaveModalOpen(true)}
+            >
+              <Layers className="h-3.5 w-3.5 text-violet-400" />
+              Save as Pipeline
+            </Button>
+          </div>
+        )}
+      </aside>
 
       {/* Save as Pipeline Modal */}
       <SaveAsPipelineModal

@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
 class KnowledgeSourceCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    embedding_model: str = "text-embedding-3-small"
+    embedding_model: str = "baai/bge-m3"
 
 class KnowledgeSourceUpdate(BaseModel):
     name: Optional[str] = None
@@ -72,9 +72,10 @@ async def update_knowledge_source(
     return await db.update_knowledge_source(id, user["sub"], body.model_dump(exclude_none=True))
 
 
-@router.delete("/{id}", status_code=204)
+@router.delete("/{id}")
 async def delete_knowledge_source(id: str, user=Depends(get_current_user)):
     await db.delete_knowledge_source(id, user["sub"])
+    return {"deleted": True}
 
 
 # ── Ingestion ─────────────────────────────────────────────────────────────────
@@ -125,9 +126,10 @@ async def list_chunks(
     return await db.list_chunks(id, user["sub"], page=page, limit=limit)
 
 
-@router.delete("/{id}/chunks/{chunk_id}", status_code=204)
+@router.delete("/{id}/chunks/{chunk_id}")
 async def delete_chunk(id: str, chunk_id: str, user=Depends(get_current_user)):
     await db.delete_chunk(id, chunk_id, user["sub"])
+    return {"deleted": True}
 
 
 # ── Semantic search ───────────────────────────────────────────────────────────
