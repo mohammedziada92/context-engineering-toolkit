@@ -105,6 +105,7 @@ export async function postChatStream(payload: ChatPayload, signal?: AbortSignal)
 // ── Save as Pipeline ─────────────────────────────────────────
 export async function saveAsPipeline(payload: {
   name: string
+  description?: string
   model: string
   system_prompt: string
   temperature: number
@@ -118,6 +119,7 @@ export async function saveAsPipeline(payload: {
     method: 'POST',
     body: JSON.stringify({
       name: payload.name,
+      description: payload.description,
       pipeline_config: {
         model: payload.model,
         system_prompt: payload.system_prompt,

@@ -64,6 +64,5 @@ class ProfileUpdate(BaseModel):
 
 class PreferencesUpdate(BaseModel):
     theme: str | None = None          # dark | light | system
-    language: str | None = None
     timezone: str | None = None
     date_format: str | None = None

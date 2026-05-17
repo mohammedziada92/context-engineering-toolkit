@@ -14,8 +14,8 @@ def _get_client() -> Client:
 
 # ── Chunking helpers ────────────────────────────────────────────
 
-CHUNK_SIZE = 500      # characters per chunk
-CHUNK_OVERLAP = 50    # overlap between consecutive chunks
+CHUNK_SIZE = 800      # characters per chunk (~200 tokens)
+CHUNK_OVERLAP = 80    # overlap between consecutive chunks (~20 tokens)
 
 
 def _get_wikipedia_api_url(url: str) -> str | None:

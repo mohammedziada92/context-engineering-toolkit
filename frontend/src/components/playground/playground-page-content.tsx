@@ -14,6 +14,7 @@ import {
   exportAsMarkdown,
 } from '@/lib/api/playground'
 import { PipelineModeToggle } from './PipelineModeToggle'
+import { ThinkingLoader } from './ThinkingLoader'
 import { KBAttachmentPanel } from './KBAttachmentPanel'
 import { RAGContextInspector } from './RAGContextInspector'
 import { SaveAsPipelineModal } from './SaveAsPipelineModal'
@@ -67,7 +68,7 @@ const DEFAULT_CONFIG: Config = {
   stream: true,
   knowledge_source_id: null,
   top_k: 5,
-  threshold: 0.70,
+  threshold: 0.50,
 }
 
 const QUICK_STARTS = [
@@ -103,6 +104,8 @@ export function PlaygroundPageContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const creatingSessionRef = useRef(false)
   const renamedRef = useRef(false)
+  const baseTokensRef = useRef(0)
+  const baseCostRef = useRef(0)
 
   const { data: sessions } = useQuery<Session[]>({
     queryKey: ['playground-sessions'],
@@ -123,6 +126,8 @@ export function PlaygroundPageContent() {
     const s = await getSession(id)
     setSessionId(s.id)
     renamedRef.current = (s.messages?.length ?? 0) > 0
+    baseTokensRef.current = (s as any).total_tokens ?? 0
+    baseCostRef.current = (s as any).total_cost ?? 0
     setMessages(
       (s.messages ?? []).map((m) => ({
         id: m.id,
@@ -139,6 +144,8 @@ export function PlaygroundPageContent() {
     setSessionId(null)
     setConfig(DEFAULT_CONFIG)
     renamedRef.current = false
+    baseTokensRef.current = 0
+    baseCostRef.current = 0
   }
 
   async function handleDeleteSession(id: string) {
@@ -160,6 +167,7 @@ export function PlaygroundPageContent() {
     const content = (text ?? input).trim()
     if (!content || streaming) return
     setInput('')
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content }
     const assistantId = crypto.randomUUID()
@@ -314,12 +322,26 @@ export function PlaygroundPageContent() {
   }
 
   // ── Session totals ─────────────────────────────────────────
-  const sessionTokens = messages
+  const liveTokens = messages
     .filter((m) => m.meta)
     .reduce((s, m) => s + (m.meta!.tokens_in + m.meta!.tokens_out), 0)
-  const sessionCost = messages
+  const liveCost = messages
     .filter((m) => m.meta)
     .reduce((s, m) => s + m.meta!.cost_usd, 0)
+  const sessionTokens = baseTokensRef.current + liveTokens
+  const sessionCost = baseCostRef.current + liveCost
+
+  // Flush token totals on unmount via sendBeacon
+  useEffect(() => {
+    return () => {
+      if (sessionId && liveTokens > 0) {
+        const url = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/v1/playground/sessions/${sessionId}/tokens`
+        const blob = new Blob([JSON.stringify({ total_tokens: liveTokens, total_cost: liveCost })], { type: 'application/json' })
+        navigator.sendBeacon(url, blob)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const sessionExport: SessionExport = {
     created_at: new Date().toISOString(),
@@ -470,8 +492,11 @@ export function PlaygroundPageContent() {
                     ? 'bg-violet-600 text-white rounded-br-sm'
                     : 'bg-zinc-800 text-zinc-100 rounded-bl-sm'
                 )}>
-                  {msg.content}
-                  {msg.streaming && (
+                  {msg.content.replace(/^\*\*Assistant\*\*\s*/i, '')}
+                  {msg.streaming && !msg.content && (
+                    <ThinkingLoader isRAG={!!config.knowledge_source_id} />
+                  )}
+                  {msg.streaming && msg.content && (
                     <span className="inline-block ml-1 h-3.5 w-0.5 bg-violet-400 animate-pulse rounded-full" />
                   )}
                 </div>
@@ -500,12 +525,16 @@ export function PlaygroundPageContent() {
             <textarea
               ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Send a message…"
               disabled={streaming}
               rows={1}
-              className="flex-1 resize-none bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 max-h-36 outline-none"
+              className="flex-1 resize-none bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 max-h-50 outline-none overflow-y-auto"
             />
             {streaming ? (
               <button
@@ -644,6 +673,7 @@ export function PlaygroundPageContent() {
             knowledgeSourceId={config.knowledge_source_id}
             topK={config.top_k}
             threshold={config.threshold}
+            disabled={config.mode === 'direct'}
             onKBChange={(knowledge_source_id) => patchConfig({ knowledge_source_id })}
             onTopKChange={(top_k) => patchConfig({ top_k })}
             onThresholdChange={(threshold) => patchConfig({ threshold })}

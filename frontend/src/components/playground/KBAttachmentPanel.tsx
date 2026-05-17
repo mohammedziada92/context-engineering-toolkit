@@ -7,11 +7,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { BookOpen } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface Props {
   knowledgeSourceId: string | null
   topK: number
   threshold: number
+  disabled?: boolean
   onKBChange: (id: string | null) => void
   onTopKChange: (v: number) => void
   onThresholdChange: (v: number) => void
@@ -21,6 +23,7 @@ export function KBAttachmentPanel({
   knowledgeSourceId,
   topK,
   threshold,
+  disabled = false,
   onKBChange,
   onTopKChange,
   onThresholdChange,
@@ -41,27 +44,33 @@ export function KBAttachmentPanel({
         <Label className="text-xs font-medium text-zinc-400">Knowledge Base</Label>
       </div>
 
-      <Select value={knowledgeSourceId ?? 'none'} onValueChange={(v) => onKBChange(v === 'none' ? null : v)}>
-        <SelectTrigger className="h-8 bg-zinc-900 border-zinc-700 text-zinc-100 text-xs hover:bg-zinc-800">
-          <SelectValue placeholder="None">
-            {(value: string | null) => {
-              if (!value || value === 'none') return 'None'
-              const source = sources.find((s) => s.id === value)
-              return source?.name ?? value
-            }}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent className="bg-zinc-900 border-zinc-800">
-          <SelectItem value="none" className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100">None</SelectItem>
-          {sources.map((s) => (
-            <SelectItem key={s.id} value={s.id} className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100">
-              {s.name} <span className="text-zinc-500">({s.total_chunks?.toLocaleString() ?? 0} chunks)</span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className={cn(disabled && 'opacity-50 pointer-events-none cursor-not-allowed')} title={disabled ? 'KB selection only applies in Pipeline mode' : undefined}>
+        <Select value={knowledgeSourceId ?? 'none'} onValueChange={(v) => onKBChange(v === 'none' ? null : v)}>
+          <SelectTrigger className="h-8 bg-zinc-900 border-zinc-700 text-zinc-100 text-xs hover:bg-zinc-800">
+            <SelectValue placeholder="None">
+              {(value: string | null) => {
+                if (!value || value === 'none') return 'None'
+                const source = sources.find((s) => s.id === value)
+                return source?.name ?? value
+              }}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="bg-zinc-900 border-zinc-800">
+            <SelectItem value="none" className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100">None</SelectItem>
+            {sources.map((s) => (
+              <SelectItem key={s.id} value={s.id} className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100">
+                {s.name} <span className="text-zinc-500">({s.total_chunks?.toLocaleString() ?? 0} chunks)</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-      {knowledgeSourceId && (
+      <p className="text-[11px] text-zinc-600">
+        {disabled ? 'Not used in Direct LLM mode' : 'Chunks injected into context'}
+      </p>
+
+      {!disabled && knowledgeSourceId && (
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label className="text-xs text-zinc-500">Top K</Label>
@@ -86,7 +95,7 @@ export function KBAttachmentPanel({
         </div>
       )}
 
-      {sources.length === 0 && (
+      {sources.length === 0 && !disabled && (
         <p className="text-xs text-zinc-600">
           No ready knowledge sources.{' '}
           <a href="/knowledge" className="text-violet-400 hover:text-violet-300">Upload one</a>.

@@ -4,14 +4,15 @@ import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { FileText, Link2, Upload, Loader2, CheckCircle2 } from 'lucide-react'
+import { FileText, Link2, Upload, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { Button }   from '@/components/ui/button'
 import { Input }    from '@/components/ui/input'
 import { Label }    from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ingestText, ingestFile, ingestUrl } from '@/lib/api/knowledge'
+import { getSettings } from '@/lib/api/settings'
 
 type Mode = 'text' | 'file' | 'url'
 
@@ -30,6 +31,13 @@ export function IngestPanel({ sourceId }: { sourceId: string }) {
   const [success, setSuccess] = useState(false)
   const fileRef               = useRef<HTMLInputElement>(null)
   const qc                    = useQueryClient()
+
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: getSettings,
+    staleTime: 60_000,
+  })
+  const noApiKey = settings !== undefined && !settings?.openrouter_api_key
 
   const textForm = useForm({ resolver: zodResolver(textSchema) })
   const urlForm  = useForm({ resolver: zodResolver(urlSchema) })
@@ -101,6 +109,15 @@ export function IngestPanel({ sourceId }: { sourceId: string }) {
           </button>
         ))}
       </div>
+
+      {/* API Key warning */}
+      {noApiKey && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>No API key configured. Embeddings will fail without an OpenRouter key.</span>
+          <a href="/settings/api-keys" className="ml-auto shrink-0 underline hover:text-amber-300">Go to Settings</a>
+        </div>
+      )}
 
       {/* Success banner */}
       {success && (

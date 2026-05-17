@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { getSettings, getUsage } from '@/lib/api/settings'
+import { getSettings } from '@/lib/api/settings'
 import { SettingsNav } from '../settings-nav'
 import { BYOKBanner } from './BYOKBanner'
 import { APIKeySection } from './APIKeySection'
@@ -13,15 +13,6 @@ export function APIKeysPageContent() {
     queryKey: ['settings'],
     queryFn: getSettings,
     staleTime: 60_000,
-  })
-
-  const hasKey = !!settings?.openrouter_api_key
-
-  const { data: usage } = useQuery({
-    queryKey: ['usage'],
-    queryFn: getUsage,
-    enabled: hasKey,
-    staleTime: 60 * 60_000, // 1hr cache
   })
 
   return (
@@ -36,7 +27,7 @@ export function APIKeysPageContent() {
           <BYOKBanner />
           <APIKeySection settings={settings} />
           <DefaultModelCards currentModel={settings?.default_model} />
-          {hasKey && <UsageThisMonth usage={usage} />}
+          <UsageThisMonth />
         </div>
       </div>
     </div>

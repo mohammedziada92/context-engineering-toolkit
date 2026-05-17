@@ -10,6 +10,11 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 import { usePipelineStore, validatePipeline } from '@/stores/pipeline.store'
 import { toast } from 'sonner'
 
@@ -37,6 +42,7 @@ export function CanvasTopBar({
 
   const [editingName, setEditingName] = useState(false)
   const [draftName, setDraftName] = useState(pipelineName)
+  const [discardOpen, setDiscardOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { if (editingName) { setDraftName(pipelineName); inputRef.current?.select() } }, [editingName, pipelineName])
@@ -85,10 +91,10 @@ export function CanvasTopBar({
         className="h-7 w-7 text-zinc-400 hover:text-zinc-200"
         onClick={() => {
           if (isDirty) {
-            const ok = window.confirm('You have unsaved changes. Leave anyway?')
-            if (!ok) return
+            setDiscardOpen(true)
+          } else {
+            router.push('/pipelines')
           }
-          router.push('/pipelines')
         }}
       >
         <ChevronLeft className="h-4 w-4" />
@@ -183,6 +189,29 @@ export function CanvasTopBar({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Unsaved changes dialog */}
+      <AlertDialog open={discardOpen} onOpenChange={(open) => { if (!open) setDiscardOpen(false) }}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-zinc-100">You have unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400 text-sm">
+              Leaving will discard your changes to this pipeline.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700">
+              Keep editing
+            </AlertDialogCancel>
+            <button
+              onClick={() => { setDiscardOpen(false); router.push('/pipelines') }}
+              className="px-4 py-2 rounded-md border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors"
+            >
+              Leave anyway
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

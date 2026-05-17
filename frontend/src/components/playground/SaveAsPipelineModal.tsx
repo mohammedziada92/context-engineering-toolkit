@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { X, CheckCircle2 } from 'lucide-react'
 import { saveAsPipeline } from '@/lib/api/playground'
 
@@ -32,11 +33,29 @@ const MODEL_NAMES: Record<string, string> = {
   'google/gemini-3.1-pro-preview': 'Gemini 3.1 Pro',
 }
 
+function suggestName(systemPrompt: string): string {
+  const words = systemPrompt.replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean)
+  const stopWords = new Set(['a', 'an', 'the', 'is', 'are', 'you', 'your', 'of', 'in', 'to', 'for', 'and', 'or', 'that', 'with', 'as', 'be', 'on', 'it', 'at', 'by'])
+  const meaningful = words.filter((w) => !stopWords.has(w.toLowerCase())).slice(0, 3)
+  if (meaningful.length === 0) return 'My Pipeline'
+  return meaningful.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') + ' Pipeline'
+}
+
 export function SaveAsPipelineModal({ open, onClose, config, systemPromptTokens }: Props) {
   const router = useRouter()
-  const [name, setName] = useState('My Playground Config')
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [pipelineId, setPipelineId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (open) {
+      setName(suggestName(config.system_prompt))
+      setDescription('')
+      setStatus('idle')
+      setPipelineId(null)
+    }
+  }, [open, config.system_prompt])
 
   if (!open) return null
 
@@ -46,6 +65,7 @@ export function SaveAsPipelineModal({ open, onClose, config, systemPromptTokens 
     try {
       const pipeline = await saveAsPipeline({
         name: name.trim(),
+        description: description.trim() || undefined,
         model: config.model,
         system_prompt: config.system_prompt,
         temperature: config.temperature,
@@ -120,8 +140,20 @@ export function SaveAsPipelineModal({ open, onClose, config, systemPromptTokens 
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="My Playground Config"
+                placeholder="My RAG Pipeline"
                 className="bg-zinc-800 border-zinc-700 text-zinc-200 h-9"
+                disabled={status === 'loading'}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-zinc-400">Description <span className="text-zinc-600">(optional)</span></Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What does this pipeline do?"
+                rows={2}
+                className="bg-zinc-800 border-zinc-700 text-zinc-200 text-sm resize-none"
                 disabled={status === 'loading'}
               />
             </div>

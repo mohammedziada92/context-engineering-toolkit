@@ -53,21 +53,14 @@ export function PreferencesForm({ preferences }: Props) {
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-zinc-400">Language</Label>
-            <select {...register('language')} className={selectClass}>
-              <option value="en">English</option>
-              <option value="ar">Arabic</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
             <Label className="text-xs text-zinc-400">Timezone</Label>
             <select {...register('timezone')} className={selectClass}>
               {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
             </select>
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-zinc-400">Date Format</Label>
             <select {...register('date_format')} className={selectClass}>

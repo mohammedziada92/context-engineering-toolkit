@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+import logging
 
 from app.middleware.auth import get_current_user
 from app.models.settings import (
@@ -131,6 +132,9 @@ MAX_AVATAR_BYTES = 2 * 1024 * 1024  # 2 MB
 ALLOWED_AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 
+log = logging.getLogger(__name__)
+
+
 @router.post("/avatar")
 async def upload_avatar(file: UploadFile, user: dict = Depends(get_current_user)):
     if file.content_type not in ALLOWED_AVATAR_TYPES:
@@ -140,11 +144,25 @@ async def upload_avatar(file: UploadFile, user: dict = Depends(get_current_user)
         raise HTTPException(status_code=400, detail="File too large (max 2 MB)")
     try:
         from supabase import create_client
+        from urllib.parse import urlparse
         client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
         try:
             client.storage.create_bucket("Avatars", {"public": True})
         except Exception:
             pass
+
+        # Delete old avatar if one exists
+        profile = await db.get_profile(user["sub"], user)
+        old_url = profile.get("avatar_url") if profile else None
+        if old_url:
+            try:
+                parsed = urlparse(old_url)
+                parts = parsed.path.split("/storage/v1/object/public/Avatars/")
+                if len(parts) == 2 and parts[1]:
+                    client.storage.from_("Avatars").remove([parts[1]])
+            except Exception as exc:
+                log.warning("Failed to delete old avatar for user %s: %s", user["sub"], exc)
+
         path = f"{user['sub']}"
         client.storage.from_("Avatars").upload(path, contents, {"content-type": file.content_type, "upsert": "true"})
         url = client.storage.from_("Avatars").get_public_url(path)

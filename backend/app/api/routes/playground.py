@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from pydantic import BaseModel
 from supabase import create_client, Client
 
 from app.core.config import settings
@@ -99,12 +100,12 @@ async def run_playground(
                 user_id=user_id,
                 user_message=_last_user_content(body.messages),
                 llm_response=llm_response_text,
-                model_used=body.model,
+                model_used=effective_model,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 total_tokens=prompt_tokens + completion_tokens,
                 cost_usd=token_service.estimate_cost(
-                    prompt_tokens, completion_tokens, body.model
+                    prompt_tokens, completion_tokens, effective_model
                 ),
                 latency_ms=latency_ms,
                 status="error",
@@ -207,6 +208,28 @@ async def create_session(
     session["message_count"] = 0
     logger.info("Created chat session {} for user {}", session["id"], user["sub"])
     return session
+
+
+# ── PATCH /api/v1/playground/sessions/{session_id}/tokens ────────
+
+
+class TokenFlushBody(BaseModel):
+    total_tokens: int
+    total_cost: float
+
+
+@router.patch("/sessions/{session_id}/tokens")
+async def flush_session_tokens(
+    session_id: str,
+    body: TokenFlushBody,
+    user: dict = Depends(get_current_user),
+):
+    """Increment session token totals — used by sendBeacon on unmount."""
+    session = await playground_db.get_session_by_id(session_id, user["sub"])
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await _increment_session_totals(session_id, body.total_tokens, body.total_cost)
+    return {"ok": True}
 
 
 # ── GET /api/v1/playground/sessions/{session_id} ────────────────
@@ -337,21 +360,54 @@ async def chat_stream(
         content=body.message,
     )
 
+    # Resolve effective config: in pipeline mode, load canvas_state overrides
+    effective_model = body.model
+    effective_system_prompt = body.system_prompt
+    effective_kb_id = body.knowledge_source_id
+    effective_top_k = body.top_k
+    effective_threshold = body.threshold
+
+    if body.mode == "pipeline" and body.pipeline_id:
+        from app.db.queries.pipelines import get_pipeline
+        pipeline = await get_pipeline(user_id=user_id, pipeline_id=body.pipeline_id)
+        if pipeline:
+            canvas_state = pipeline.get("canvas_state") or {}
+            from app.services.pipeline_engine import _parse_nodes
+            nodes = _parse_nodes(canvas_state)
+            llm_data = nodes.get("llm") or {}
+            sp_data = nodes.get("system_prompt") or {}
+            rag_data = nodes.get("rag") or {}
+            ks_data = nodes.get("knowledge_source") or {}
+            # Override model from pipeline LLM node
+            if llm_data.get("model"):
+                effective_model = llm_data["model"]
+            # Override system prompt from pipeline
+            if sp_data.get("content"):
+                effective_system_prompt = sp_data["content"]
+            # Resolve knowledge_source_id from RAG/knowledge_source node
+            rag_kb_id = rag_data.get("knowledge_source_id") or rag_data.get("source_id") or ks_data.get("source_id")
+            if rag_kb_id:
+                effective_kb_id = rag_kb_id
+            if rag_data.get("top_k"):
+                effective_top_k = rag_data["top_k"]
+            if rag_data.get("similarity_threshold"):
+                effective_threshold = rag_data["similarity_threshold"]
+
     # Build messages for LLM
     llm_messages: list[dict] = []
-    if body.system_prompt:
-        llm_messages.append({"role": "system", "content": body.system_prompt})
+    if effective_system_prompt:
+        llm_messages.append({"role": "system", "content": effective_system_prompt})
 
-    # Optional RAG: retrieve chunks
+    # Optional RAG: retrieve chunks (works in both direct and pipeline mode)
     retrieved_chunks: list[dict] = []
-    if body.knowledge_source_id and body.mode == "direct":
+    if effective_kb_id:
         try:
             from app.services.rag_service import retrieve_chunks
             retrieved_chunks = await retrieve_chunks(
-                knowledge_source_id=body.knowledge_source_id,
+                knowledge_source_id=effective_kb_id,
                 query=body.message,
-                top_k=body.top_k,
-                threshold=body.threshold,
+                top_k=effective_top_k,
+                threshold=effective_threshold,
                 user_id=user_id,
                 api_key=api_key,
             )
@@ -368,11 +424,12 @@ async def chat_stream(
     llm_messages.append({"role": "user", "content": body.message})
 
     logger.info(
-        "Playground chat: session={}, mode={}, model={}, rag={}",
+        "Playground chat: session={}, mode={}, model={}, rag={}, chunks={}",
         session_id,
         body.mode,
-        body.model,
-        bool(retrieved_chunks),
+        effective_model,
+        bool(effective_kb_id),
+        len(retrieved_chunks),
     )
 
     async def stream() -> AsyncGenerator[str, None]:
@@ -381,7 +438,7 @@ async def chat_stream(
         prompt_tokens = token_service.count_messages_tokens(llm_messages)
         completion_tokens = 0
 
-        yield _sse({"status": "calling_llm", "model": body.model, "session_id": session_id})
+        yield _sse({"status": "calling_llm", "model": effective_model, "session_id": session_id})
 
         if retrieved_chunks:
             yield _sse({"chunks": retrieved_chunks})
@@ -389,7 +446,7 @@ async def chat_stream(
         try:
             async for delta in llm_service.call_llm_stream(
                 user_id=user_id,
-                model=body.model,
+                model=effective_model,
                 messages=llm_messages,
                 temperature=body.temperature,
                 max_tokens=body.max_tokens,
@@ -406,12 +463,12 @@ async def chat_stream(
                 user_id=user_id,
                 user_message=body.message,
                 llm_response=llm_response_text,
-                model_used=body.model,
+                model_used=effective_model,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 total_tokens=prompt_tokens + completion_tokens,
                 cost_usd=token_service.estimate_cost(
-                    prompt_tokens, completion_tokens, body.model
+                    prompt_tokens, completion_tokens, effective_model
                 ),
                 latency_ms=latency_ms,
                 status="error",
@@ -450,6 +507,12 @@ async def chat_stream(
             status="success",
             pipeline_id=session_pipeline_id,
         )
+
+        # Increment session-level totals
+        try:
+            await _increment_session_totals(session_id, total_tokens, cost_usd)
+        except Exception as e:
+            logger.error("Session totals increment failed for {}: {}", session_id, e)
 
         yield _sse({
             "status": "done",
@@ -563,3 +626,28 @@ async def _log_playground_run(
         "status": status,
         "error_message": error_message,
     }).execute()
+
+
+async def _increment_session_totals(
+    session_id: str,
+    delta_tokens: int,
+    delta_cost: float,
+) -> None:
+    """Increment chat_sessions token totals and message count."""
+    try:
+        client = _get_supabase()
+        row = client.table("chat_sessions").select("total_tokens, total_cost, message_count").eq("id", session_id).single().execute()
+        if row.data:
+            new_tokens = (row.data["total_tokens"] or 0) + delta_tokens
+            new_cost = (row.data["total_cost"] or 0) + delta_cost
+            new_count = (row.data["message_count"] or 0) + 1
+            client.table("chat_sessions").update({
+                "total_tokens": new_tokens,
+                "total_cost": new_cost,
+                "message_count": new_count,
+            }).eq("id", session_id).execute()
+            logger.info("Session {} updated: tokens={}, cost={:.4f}, messages={}", session_id, new_tokens, new_cost, new_count)
+        else:
+            logger.warning("Session {} not found for token increment", session_id)
+    except Exception as e:
+        logger.error("Failed to increment session totals for {}: {}", session_id, e)

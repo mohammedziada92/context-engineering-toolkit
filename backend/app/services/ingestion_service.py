@@ -84,8 +84,8 @@ async def _extract_text(source: dict) -> str:
 
 def _chunk_text(
     text: str,
-    chunk_size: int = 512,
-    overlap: int = 50,
+    chunk_size: int = 200,
+    overlap: int = 20,
 ) -> list[str]:
     """Split text into overlapping token-based chunks.
 
@@ -113,7 +113,7 @@ async def ingest_source(source_id: str, user_id: str) -> None:
     Steps:
         1. Update status → "processing"
         2. Extract text (PDF / TXT / URL / pasted text)
-        3. Chunk text (512 tokens, 50 overlap)
+        3. Chunk text (200 tokens, 20 overlap by default)
         4. Update status → "embedding"
         5. Embed all chunks via embed_batch (passage prefix)
         6. INSERT chunks into public.chunks with VECTOR(1024)
@@ -139,8 +139,11 @@ async def ingest_source(source_id: str, user_id: str) -> None:
         logger.info("Extracted {} characters from {}", len(raw_text), source_id)
 
         # ── Step 3: Chunk ──────────────────────────────
-        chunks = _chunk_text(raw_text)
-        logger.info("Split into {} chunks (512 tokens, 50 overlap)", len(chunks))
+        cc = source.get("chunk_config") or {}
+        chunk_size = cc.get("chunk_size", 200)
+        overlap = cc.get("overlap", 20)
+        chunks = _chunk_text(raw_text, chunk_size=chunk_size, overlap=overlap)
+        logger.info("Split into {} chunks ({} tokens, {} overlap)", len(chunks), chunk_size, overlap)
 
         # ── Step 4: Mark embedding ─────────────────────
         source_table.update({"status": "embedding"}).eq("id", source_id).execute()

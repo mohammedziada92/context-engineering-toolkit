@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { getSettings, getUsage, getProfile } from '@/lib/api/settings'
+import { getProfile } from '@/lib/api/settings'
 import { apiFetch } from '@/lib/api/api'
 import { SettingsNav } from '../settings-nav'
 import { CurrentPlanCard } from './CurrentPlanCard'
@@ -15,15 +15,6 @@ export function BillingPageContent() {
   const [notifyOpen, setNotifyOpen] = useState(false)
 
   const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: getProfile, staleTime: 60_000 })
-  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings, staleTime: 60_000 })
-  const hasKey = !!settings?.openrouter_api_key
-
-  const { data: usage } = useQuery({
-    queryKey: ['usage'],
-    queryFn: getUsage,
-    enabled: hasKey,
-    staleTime: 60 * 60_000,
-  })
 
   const { data: quotas } = useQuery({
     queryKey: ['billing-usage'],
@@ -42,7 +33,7 @@ export function BillingPageContent() {
         <div className="space-y-8">
           <CurrentPlanCard profile={profile} />
           <UsageQuotas quotas={quotas as any} />
-          <LLMCosts usage={usage} hasKey={hasKey} />
+          <LLMCosts />
 
           {/* v2 Plans teaser */}
           <section className="rounded-xl border border-zinc-700 bg-zinc-800/40 p-6">
@@ -78,6 +69,23 @@ export function BillingPageContent() {
               className="inline-flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300"
             >
               View LLM spend on OpenRouter →
+            </a>
+          </section>
+
+          {/* Support the project */}
+          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <h2 className="text-sm font-medium text-zinc-200 mb-1">Support the project</h2>
+            <p className="text-xs text-zinc-500 mb-4">
+              CET is built and maintained independently. If it&apos;s been useful to you, a coffee goes a long way. ☕
+            </p>
+            <a
+              href="https://www.buymeacoffee.com/MohammedZiada92"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-[#000000] hover:brightness-95 transition-all"
+              style={{ backgroundColor: '#FFDD00' }}
+            >
+              ☕ Buy me a coffee
             </a>
           </section>
         </div>

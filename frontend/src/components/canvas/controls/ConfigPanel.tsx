@@ -146,12 +146,12 @@ export function ConfigPanel() {
                 <span className="text-xs font-mono text-emerald-400">{((d.similarity_threshold ?? 0.75) as number).toFixed(2)}</span>
               </div>
               <Slider
-                min={0.60} max={1.0} step={0.01}
+                min={0.40} max={1.0} step={0.01}
                 value={[(d.similarity_threshold ?? 0.75) as number]}
                 onValueChange={(v) => update({ similarity_threshold: typeof v === 'number' ? v : (v as number[])[0] })}
                 className="[&>span]:bg-emerald-500"
               />
-              <p className="text-[10px] text-zinc-600">Min 0.60 — don't go below for quality results</p>
+              <p className="text-[10px] text-zinc-600">Lower values return more results but may reduce relevance</p>
             </div>
 
             <BudgetSlider
