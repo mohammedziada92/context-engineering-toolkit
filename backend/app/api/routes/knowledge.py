@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 from app.middleware.auth import get_current_user
 from app.db.queries import knowledge as db
+from app.services import vault_service
 
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
 
@@ -32,6 +33,19 @@ class SearchBody(BaseModel):
     query: str
     top_k: int = 5
     threshold: float = 0.75
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+async def _require_api_key(user_id: str) -> str:
+    """Retrieve the user's decrypted OpenRouter key. Raise 402 if absent."""
+    api_key = await vault_service.get_decrypted_key(user_id)
+    if not api_key:
+        raise HTTPException(
+            status_code=402,
+            detail="OpenRouter API key required. Add yours in Settings.",
+        )
+    return api_key
 
 
 # ── Sources CRUD ──────────────────────────────────────────────────────────────
@@ -85,7 +99,8 @@ async def ingest_text(id: str, body: IngestTextBody, user=Depends(get_current_us
     source = await db.get_knowledge_source(id, user["sub"])
     if not source:
         raise HTTPException(404, "Knowledge source not found")
-    job_id = await db.queue_ingest_text(id, body.title, body.content, body.metadata)
+    api_key = await _require_api_key(user["sub"])
+    job_id = await db.queue_ingest_text(id, body.title, body.content, body.metadata, api_key=api_key)
     return {"job_id": job_id, "status": "queued"}
 
 
@@ -101,7 +116,8 @@ async def ingest_file(
     content = await file.read()
     if len(content) > 20 * 1024 * 1024:
         raise HTTPException(413, "File exceeds 20MB limit")
-    job_id = await db.queue_ingest_file(id, file.filename or "upload", content, file.content_type)
+    api_key = await _require_api_key(user["sub"])
+    job_id = await db.queue_ingest_file(id, file.filename or "upload", content, file.content_type, api_key=api_key)
     return {"job_id": job_id, "status": "queued"}
 
 
@@ -110,7 +126,8 @@ async def ingest_url(id: str, body: IngestUrlBody, user=Depends(get_current_user
     source = await db.get_knowledge_source(id, user["sub"])
     if not source:
         raise HTTPException(404, "Knowledge source not found")
-    job_id = await db.queue_ingest_url(id, body.url, body.metadata)
+    api_key = await _require_api_key(user["sub"])
+    job_id = await db.queue_ingest_url(id, body.url, body.metadata, api_key=api_key)
     return {"job_id": job_id, "status": "queued"}
 
 
@@ -139,6 +156,7 @@ async def search_chunks(id: str, body: SearchBody, user=Depends(get_current_user
     source = await db.get_knowledge_source(id, user["sub"])
     if not source:
         raise HTTPException(404, "Knowledge source not found")
+    api_key = await _require_api_key(user["sub"])
     return await db.search_chunks(
-        id, body.query, top_k=body.top_k, threshold=body.threshold
+        id, body.query, top_k=body.top_k, threshold=body.threshold, api_key=api_key,
     )

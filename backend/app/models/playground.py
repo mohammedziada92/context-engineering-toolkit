@@ -35,8 +35,8 @@ class SessionConfig(BaseModel):
     max_tokens: int = Field(default=4096, ge=1, le=16384)
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
     knowledge_source_id: str | None = None
-    top_k: int = Field(default=4, ge=1, le=20)
-    threshold: float = Field(default=0.75, ge=0.0, le=1.0)
+    top_k: int = Field(default=5, ge=1, le=20)
+    threshold: float = Field(default=0.50, ge=0.0, le=1.0)
 
 
 # ── Chat sessions ────────────────────────────────────────────────
@@ -120,5 +120,5 @@ class ChatRequest(BaseModel):
     max_tokens: int = Field(default=4096, ge=1, le=16384)
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
     knowledge_source_id: str | None = None
-    top_k: int = Field(default=4, ge=1, le=20)
-    threshold: float = Field(default=0.75, ge=0.0, le=1.0)
+    top_k: int = Field(default=5, ge=1, le=20)
+    threshold: float = Field(default=0.50, ge=0.0, le=1.0)

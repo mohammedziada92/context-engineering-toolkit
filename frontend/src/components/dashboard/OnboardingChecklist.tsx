@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Check, Key, GitBranch, Play, LogIn } from 'lucide-react'
+import { Check, Key, GitBranch, Play, LogIn, FileUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Step {
@@ -16,6 +16,7 @@ interface Step {
 interface Props {
   onboarding: {
     has_api_key: boolean
+    has_knowledge_source: boolean
     has_pipeline: boolean
     has_run: boolean
     complete: boolean
@@ -28,10 +29,11 @@ export function OnboardingChecklist({ onboarding }: Props) {
   if (onboarding.complete) return null
 
   const steps: Step[] = [
-    { icon: LogIn,    label: 'Sign in',                  description: 'Create your account',              done: true },
-    { icon: Key,      label: 'Add OpenRouter API key',   description: 'Connect your LLM provider',        done: onboarding.has_api_key,   action: 'Add key',  href: '/settings' },
-    { icon: GitBranch,label: 'Create a pipeline',        description: 'Build your first context pipeline', done: onboarding.has_pipeline,  action: 'Create',   href: '/pipelines/new' },
-    { icon: Play,     label: 'Run a pipeline',           description: 'Execute and see live results',      done: onboarding.has_run,       action: 'View',      href: '/pipelines' },
+    { icon: LogIn,     label: 'Sign in',                    description: 'Create your account',               done: true },
+    { icon: FileUp,   label: 'Upload your first document',  description: 'Add knowledge to your RAG pipeline', done: onboarding.has_knowledge_source, action: 'Upload',  href: '/knowledge' },
+    { icon: GitBranch,label: 'Create a pipeline',           description: 'Build your first context pipeline',  done: onboarding.has_pipeline,          action: 'Create',   href: '/pipelines/new' },
+    { icon: Key,      label: 'Add OpenRouter API key',      description: 'Connect your LLM provider',         done: onboarding.has_api_key,            action: 'Add key',  href: '/settings' },
+    { icon: Play,     label: 'Run your first pipeline',     description: 'Execute and see live results',       done: onboarding.has_run,                action: 'View',     href: '/pipelines' },
   ]
 
   const completedCount = steps.filter((s) => s.done).length

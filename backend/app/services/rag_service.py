@@ -24,7 +24,7 @@ async def search_chunks(
     knowledge_source_id: str,
     query: str,
     top_k: int = 5,
-    similarity_threshold: float = 0.75,
+    similarity_threshold: float = 0.50,
     api_key: str | None = None,
 ) -> list[dict]:
     """Perform vector similarity search against the chunks table.
@@ -96,7 +96,7 @@ async def retrieve_chunks(
     knowledge_source_id: str,
     query: str,
     top_k: int = 5,
-    threshold: float = 0.75,
+    threshold: float = 0.50,
     user_id: str | None = None,
     api_key: str | None = None,
 ) -> list[dict]:

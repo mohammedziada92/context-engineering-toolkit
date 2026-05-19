@@ -386,12 +386,29 @@ async def chat_stream(
                 effective_system_prompt = sp_data["content"]
             # Resolve knowledge_source_id from RAG/knowledge_source node
             rag_kb_id = rag_data.get("knowledge_source_id") or rag_data.get("source_id") or ks_data.get("source_id")
+            logger.info(
+                "Playground pipeline mode: pipeline_id={}, rag_kb_id={}, rag_data_keys={}, ks_data_keys={}",
+                body.pipeline_id,
+                rag_kb_id,
+                list(rag_data.keys()) if rag_data else [],
+                list(ks_data.keys()) if ks_data else [],
+            )
             if rag_kb_id:
                 effective_kb_id = rag_kb_id
             if rag_data.get("top_k"):
                 effective_top_k = rag_data["top_k"]
             if rag_data.get("similarity_threshold"):
-                effective_threshold = rag_data["similarity_threshold"]
+                effective_threshold = min(body.threshold, rag_data["similarity_threshold"])
+        else:
+            logger.warning("Playground pipeline mode: pipeline {} not found for user {}", body.pipeline_id, user_id)
+
+    logger.info(
+        "Playground RAG resolution: mode={}, effective_kb_id={}, top_k={}, threshold={}",
+        body.mode,
+        effective_kb_id,
+        effective_top_k,
+        effective_threshold,
+    )
 
     # Build messages for LLM
     llm_messages: list[dict] = []
@@ -419,7 +436,15 @@ async def chat_stream(
                 }
                 llm_messages.append(rag_message)
         except Exception as e:
-            logger.warning("RAG retrieval failed, continuing without context: {}", e)
+            logger.error(
+                "Playground RAG retrieval failed for source={}, query='{}', threshold={}, api_key={}…: {}",
+                effective_kb_id,
+                body.message[:80],
+                effective_threshold,
+                bool(api_key),
+                e,
+                exc_info=True,
+            )
 
     llm_messages.append({"role": "user", "content": body.message})
 

@@ -143,11 +143,11 @@ export function ConfigPanel() {
             <div className="space-y-1.5">
               <div className="flex justify-between">
                 <Label className="text-xs text-zinc-400">Similarity Threshold</Label>
-                <span className="text-xs font-mono text-emerald-400">{((d.similarity_threshold ?? 0.75) as number).toFixed(2)}</span>
+                <span className="text-xs font-mono text-emerald-400">{((d.similarity_threshold ?? 0.5) as number).toFixed(2)}</span>
               </div>
               <Slider
                 min={0.40} max={1.0} step={0.01}
-                value={[(d.similarity_threshold ?? 0.75) as number]}
+                value={[(d.similarity_threshold ?? 0.5) as number]}
                 onValueChange={(v) => update({ similarity_threshold: typeof v === 'number' ? v : (v as number[])[0] })}
                 className="[&>span]:bg-emerald-500"
               />

@@ -131,6 +131,7 @@ async def execute_pipeline(
     user_id: str,
     session_id: str | None = None,
     model_override: str | None = None,
+    api_key: str | None = None,
 ) -> AsyncGenerator[tuple[str, dict], None]:
     """Execute a pipeline and yield (event_type, data_dict) tuples.
 
@@ -157,12 +158,13 @@ async def execute_pipeline(
                 knowledge_source_id=source_id,
                 query=user_message,
                 top_k=rag_data.get("top_k", 5),
-                similarity_threshold=rag_data.get("similarity_threshold", 0.75),
+                similarity_threshold=rag_data.get("similarity_threshold", 0.5),
+                api_key=api_key,
             )
         except Exception as e:
             logger.warning("RAG search failed, continuing without context: {}", e)
 
-    threshold = rag_data.get("similarity_threshold", 0.75)
+    threshold = rag_data.get("similarity_threshold", 0.5)
     chunks = rag_service.dedup_chunks(chunks)
     chunks = rag_service.filter_by_relevance(chunks, threshold)
 

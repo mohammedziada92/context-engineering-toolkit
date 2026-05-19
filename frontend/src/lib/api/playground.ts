@@ -128,7 +128,7 @@ export async function saveAsPipeline(payload: {
         top_p: payload.top_p,
         knowledge_source_id: payload.knowledge_source_id ?? null,
         top_k: payload.top_k ?? 5,
-        threshold: payload.threshold ?? 0.70,
+        threshold: payload.threshold ?? 0.50,
       },
       canvas_state: buildCanvasFromConfig(payload),
       status: 'draft',
@@ -161,7 +161,7 @@ function buildCanvasFromConfig(cfg: {
         type: 'rag',
         knowledge_source_id: cfg.knowledge_source_id,
         top_k: cfg.top_k ?? 5,
-        similarity_threshold: cfg.threshold ?? 0.70,
+        similarity_threshold: cfg.threshold ?? 0.50,
         max_tokens: 1500,
       },
     })

@@ -23,7 +23,7 @@ export interface SystemPromptData {
 export interface RAGNodeData {
   knowledge_source_id: string | null
   top_k: number              // default 5
-  similarity_threshold: number // default 0.75
+  similarity_threshold: number // default 0.50
   max_tokens: number         // budget: 1500
 }
 

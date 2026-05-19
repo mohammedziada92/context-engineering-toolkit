@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -14,6 +14,7 @@ import { CanvasTopBar }              from '@/components/canvas/CanvasTopBar'
 import { TokenBudgetBar }            from '@/components/canvas/controls/TokenBudgetBar'
 import { NodePanel }                 from '@/components/canvas/controls/NodePanel'
 import { ConfigPanel }               from '@/components/canvas/controls/ConfigPanel'
+import { RunModal }                  from '@/components/pipelines/RunModal'
 
 // Lazy-load heavy canvas bundle
 const PipelineCanvas = dynamic(
@@ -26,6 +27,7 @@ const AUTO_SAVE_DELAY = 30_000
 export default function NewPipelinePage() {
   const router = useRouter()
   const qc     = useQueryClient()
+  const [runModalOpen, setRunModalOpen] = useState(false)
   const store  = usePipelineStore(
     useShallow((s) => ({
       pipelineId: s.pipelineId, pipelineName: s.pipelineName,
@@ -119,7 +121,13 @@ export default function NewPipelinePage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <CanvasTopBar
           onSave={handleSave}
-          onRun={() => toast.info('Save the pipeline first, then use Run')}
+          onRun={async () => {
+            if (!store.pipelineId) {
+              await handleSave()
+              if (!store.pipelineId) return  // save failed
+            }
+            setRunModalOpen(true)
+          }}
           onDuplicate={handleDuplicate}
           onDelete={handleDelete}
           onExport={handleExport}
@@ -130,6 +138,13 @@ export default function NewPipelinePage() {
           <PipelineCanvas />
           <ConfigPanel />
         </div>
+
+        {runModalOpen && store.pipelineId && (
+          <RunModal
+            pipeline={{ id: store.pipelineId, name: store.pipelineName } as any}
+            onClose={() => setRunModalOpen(false)}
+          />
+        )}
       </div>
     </ReactFlowProvider>
   )

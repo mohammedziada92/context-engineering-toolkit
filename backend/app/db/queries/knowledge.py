@@ -4,6 +4,7 @@ import re
 from supabase import create_client, Client
 
 from app.core.config import settings
+from app.services.chunking_service import split_text
 
 
 def _get_client() -> Client:
@@ -12,10 +13,7 @@ def _get_client() -> Client:
     return client
 
 
-# ── Chunking helpers ────────────────────────────────────────────
-
-CHUNK_SIZE = 800      # characters per chunk (~200 tokens)
-CHUNK_OVERLAP = 80    # overlap between consecutive chunks (~20 tokens)
+# ── Wikipedia helper ────────────────────────────────────────────
 
 
 def _get_wikipedia_api_url(url: str) -> str | None:
@@ -28,19 +26,6 @@ def _get_wikipedia_api_url(url: str) -> str | None:
         title = match.group(2)
         return f"https://{lang}.wikipedia.org/api/rest_v1/page/html/{title}"
     return None
-
-
-def _split_text(text: str) -> list[str]:
-    """Split text into overlapping chunks of ~CHUNK_SIZE characters."""
-    if not text:
-        return []
-    chunks: list[str] = []
-    start = 0
-    while start < len(text):
-        end = start + CHUNK_SIZE
-        chunks.append(text[start:end])
-        start += CHUNK_SIZE - CHUNK_OVERLAP
-    return chunks
 
 
 # ── Sources CRUD ────────────────────────────────────────────────
@@ -95,7 +80,7 @@ async def create_knowledge_source(
     user_id: str,
     name: str,
     description: str | None = None,
-    embedding_model: str = "openai/text-embedding-3-small",
+    embedding_model: str = "baai/bge-m3",
 ) -> dict:
     """Insert a new knowledge source row. Returns the created row."""
     client = _get_client()
@@ -222,14 +207,14 @@ async def delete_chunk(source_id: str, chunk_id: str, user_id: str) -> None:
 # ── Ingestion ───────────────────────────────────────────────────
 
 
-async def _ingest_chunks(source_id: str, user_id: str, text_chunks: list[str]) -> None:
+async def _ingest_chunks(source_id: str, user_id: str, text_chunks: list[str], api_key: str) -> None:
     """Embed text chunks and insert into the chunks table."""
     from app.services.embedding_service import embed_batch
 
     client = _get_client()
 
-    # Embed all chunks
-    embeddings = embed_batch(text_chunks)
+    # Embed all chunks — requires user's own OpenRouter key (BYOK)
+    embeddings = embed_batch(text_chunks, api_key=api_key)
 
     # Build rows
     rows = []
@@ -259,7 +244,7 @@ async def _ingest_chunks(source_id: str, user_id: str, text_chunks: list[str]) -
 
 
 async def queue_ingest_text(
-    source_id: str, title: str, content: str, metadata: dict
+    source_id: str, title: str, content: str, metadata: dict, api_key: str
 ) -> str:
     """Ingest plain text: split → embed → store chunks."""
     client = _get_client()
@@ -280,14 +265,14 @@ async def queue_ingest_text(
     }).eq("id", source_id).execute()
 
     # Split and ingest
-    chunks = _split_text(content)
-    await _ingest_chunks(source_id, user_id, chunks)
+    chunks = split_text(content)
+    await _ingest_chunks(source_id, user_id, chunks, api_key=api_key)
 
     return f"ingest-text-{source_id}"
 
 
 async def queue_ingest_file(
-    source_id: str, filename: str, content: bytes, content_type: str
+    source_id: str, filename: str, content: bytes, content_type: str, api_key: str
 ) -> str:
     """Ingest a file: extract text → split → embed → store chunks."""
     client = _get_client()
@@ -323,14 +308,14 @@ async def queue_ingest_file(
     client.table("knowledge_sources").update({"type": source_type}).eq("id", source_id).execute()
 
     # Split and ingest
-    chunks = _split_text(text)
-    await _ingest_chunks(source_id, user_id, chunks)
+    chunks = split_text(text)
+    await _ingest_chunks(source_id, user_id, chunks, api_key=api_key)
 
     return f"ingest-file-{source_id}"
 
 
 async def queue_ingest_url(
-    source_id: str, url: str, metadata: dict
+    source_id: str, url: str, metadata: dict, api_key: str
 ) -> str:
     """Ingest a URL: fetch → extract text → split → embed → store chunks."""
     import httpx
@@ -388,7 +373,7 @@ async def queue_ingest_url(
         else:
             text = raw
 
-        chunks = _split_text(text)
+        chunks = split_text(text)
         if not chunks:
             client.table("knowledge_sources").update({
                 "status": "error",
@@ -396,7 +381,7 @@ async def queue_ingest_url(
             }).eq("id", source_id).execute()
             return f"ingest-url-{source_id}"
 
-        await _ingest_chunks(source_id, user_id, chunks)
+        await _ingest_chunks(source_id, user_id, chunks, api_key=api_key)
     except Exception as e:
         logger.error(f"URL ingestion failed for {url}: {e}", exc_info=True)
         client.table("knowledge_sources").update({
@@ -415,6 +400,7 @@ async def search_chunks(
     query: str,
     top_k: int = 5,
     threshold: float = 0.75,
+    api_key: str | None = None,
 ) -> dict:
     """Embed query and search via pgvector match_chunks RPC.
 
@@ -436,8 +422,8 @@ async def search_chunks(
 
     t0 = time.perf_counter()
 
-    # Embed the query
-    query_embedding = embed_text(query)
+    # Embed the query — requires user's own OpenRouter key (BYOK)
+    query_embedding = embed_text(query, api_key=api_key)
 
     # Rough token estimate for the query
     query_tokens = math.ceil(len(query) / 4)

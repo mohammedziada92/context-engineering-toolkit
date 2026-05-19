@@ -36,7 +36,7 @@ const NODE_CATEGORIES = [
           type: 'rag',
           knowledge_source_id: null,
           top_k: 5,
-          similarity_threshold: 0.75,
+          similarity_threshold: 0.50,
           max_tokens: 1500,
         },
       },

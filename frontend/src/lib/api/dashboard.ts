@@ -18,10 +18,11 @@ export interface DashboardData {
   recent_pipelines:    Pipeline[]         // last 3 updated pipelines
   recent_sources:      KnowledgeSource[]  // last 3 updated knowledge sources
   onboarding: {
-    has_api_key:   boolean
-    has_pipeline:  boolean
-    has_run:       boolean
-    complete:      boolean
+    has_api_key:           boolean
+    has_knowledge_source:  boolean
+    has_pipeline:          boolean
+    has_run:               boolean
+    complete:              boolean
   }
 }
 

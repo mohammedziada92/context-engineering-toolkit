@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react'
 
 import { usePipelineStore }          from '@/stores/pipeline.store'
 import { useShallow }                from 'zustand/react/shallow'
-import { getPipeline, updatePipeline, deletePipeline, duplicatePipeline, type Pipeline } from '@/lib/api/pipelines'
+import { getPipeline, updatePipeline, deletePipeline, duplicatePipeline, patchPipeline, type Pipeline } from '@/lib/api/pipelines'
 import { CanvasTopBar }              from '@/components/canvas/CanvasTopBar'
 import { TokenBudgetBar }            from '@/components/canvas/controls/TokenBudgetBar'
 import { NodePanel }                 from '@/components/canvas/controls/NodePanel'
@@ -80,6 +80,9 @@ export default function EditPipelinePage() {
     mutationFn: (payload: Parameters<typeof updatePipeline>[1]) =>
       updatePipeline(id, payload),
   })
+  const { mutateAsync: doPatchStatus } = useMutation({
+    mutationFn: (status: 'draft' | 'active') => patchPipeline(id, { status }),
+  })
   const { mutateAsync: doDelete } = useMutation({ mutationFn: () => deletePipeline(id) })
   const { mutateAsync: doDup }    = useMutation({ mutationFn: () => duplicatePipeline(id) })
 
@@ -122,6 +125,18 @@ export default function EditPipelinePage() {
   }, [store.isDirty, handleSave])
 
   // ── Actions ───────────────────────────────────────────────────────────────
+  const handleStatusChange = useCallback(async (newStatus: 'draft' | 'active') => {
+    const prev = store.status
+    store.setStatus(newStatus)
+    try {
+      await doPatchStatus(newStatus)
+      qc.invalidateQueries({ queryKey: ['pipelines'] })
+    } catch {
+      store.setStatus(prev)
+      toast.error('Failed to update status')
+    }
+  }, [store, doPatchStatus, qc])
+
   async function handleDelete() {
     const ok = window.confirm(`Delete "${store.pipelineName}"? This cannot be undone.`)
     if (!ok) return
@@ -165,6 +180,7 @@ export default function EditPipelinePage() {
       <EditPageInner
         onSave={handleSave}
         onNameChange={handleNameChange}
+        onStatusChange={handleStatusChange}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         onExport={handleExport}
@@ -175,9 +191,10 @@ export default function EditPipelinePage() {
 }
 
 // Inner component so RunModal state is clean
-function EditPageInner({ onSave, onNameChange, onDelete, onDuplicate, onExport, pipeline }: {
+function EditPageInner({ onSave, onNameChange, onStatusChange, onDelete, onDuplicate, onExport, pipeline }: {
   onSave: () => Promise<void>
   onNameChange: (name: string) => Promise<void>
+  onStatusChange: (status: 'draft' | 'active') => void
   onDelete: () => void
   onDuplicate: () => void
   onExport: () => void
@@ -190,6 +207,7 @@ function EditPageInner({ onSave, onNameChange, onDelete, onDuplicate, onExport, 
       <CanvasTopBar
         onSave={onSave}
         onNameChange={onNameChange}
+        onStatusChange={onStatusChange}
         onRun={() => setRunModalOpen(true)}
         onDuplicate={onDuplicate}
         onDelete={onDelete}

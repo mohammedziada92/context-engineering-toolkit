@@ -10,6 +10,7 @@ from supabase import create_client, Client
 
 from app.core.config import settings
 from app.services.embedding_service import embed_batch
+from app.services.chunking_service import split_text
 
 
 # ── Supabase client (bypasses RLS) ────────────────────
@@ -31,14 +32,27 @@ def _count_tokens(text: str) -> int:
 # ── Text extraction ───────────────────────────────────
 
 async def _extract_pdf(storage_path: str) -> str:
-    """Extract text from a PDF stored in Supabase Storage, page by page."""
+    """Extract text from a PDF using block-level parsing.
+
+    Uses PyMuPDF's "blocks" mode which groups text spans into visual
+    blocks (paragraphs).  Each block is separated by ``\\n\\n`` so the
+    chunking pipeline receives real paragraph boundaries instead of
+    flat positional text.
+    """
     client = _get_service_client()
     bucket, _, path = storage_path.partition("/")
     response = client.storage.from_(bucket).download(path)
     doc = fitz.open(stream=response, filetype="pdf")
-    pages = [page.get_text() for page in doc]
+    blocks: list[str] = []
+    for page in doc:
+        for blk in page.get_text("blocks"):
+            # blk[6] == 0 → text block (1 = image)
+            if blk[6] == 0:
+                text = blk[4].strip()
+                if text:
+                    blocks.append(text)
     doc.close()
-    return "\n\n".join(pages)
+    return "\n\n".join(blocks)
 
 
 async def _extract_txt(storage_path: str) -> str:
@@ -80,34 +94,9 @@ async def _extract_text(source: dict) -> str:
     raise ValueError(f"Unsupported source type: {source_type}")
 
 
-# ── Chunking ──────────────────────────────────────────
-
-def _chunk_text(
-    text: str,
-    chunk_size: int = 200,
-    overlap: int = 20,
-) -> list[str]:
-    """Split text into overlapping token-based chunks.
-
-    Uses tiktoken cl100k_base. Each chunk is at most chunk_size tokens
-    with overlap tokens shared between consecutive chunks.
-    """
-    tokens = _enc.encode(text)
-    chunks: list[str] = []
-    start = 0
-    while start < len(tokens):
-        end = start + chunk_size
-        chunk_tokens = tokens[start:end]
-        chunks.append(_enc.decode(chunk_tokens))
-        if end >= len(tokens):
-            break
-        start += chunk_size - overlap
-    return chunks
-
-
 # ── Main ingestion pipeline ───────────────────────────
 
-async def ingest_source(source_id: str, user_id: str) -> None:
+async def ingest_source(source_id: str, user_id: str, api_key: str) -> None:
     """Full ingestion pipeline for a knowledge source.
 
     Steps:
@@ -115,7 +104,7 @@ async def ingest_source(source_id: str, user_id: str) -> None:
         2. Extract text (PDF / TXT / URL / pasted text)
         3. Chunk text (200 tokens, 20 overlap by default)
         4. Update status → "embedding"
-        5. Embed all chunks via embed_batch (passage prefix)
+        5. Embed all chunks via embed_batch (requires user's api_key — BYOK)
         6. INSERT chunks into public.chunks with VECTOR(1024)
         7. Update knowledgesources → status="ready", total_chunks=N
 
@@ -139,20 +128,20 @@ async def ingest_source(source_id: str, user_id: str) -> None:
         logger.info("Extracted {} characters from {}", len(raw_text), source_id)
 
         # ── Step 3: Chunk ──────────────────────────────
-        cc = source.get("chunk_config") or {}
-        chunk_size = cc.get("chunk_size", 200)
-        overlap = cc.get("overlap", 20)
-        chunks = _chunk_text(raw_text, chunk_size=chunk_size, overlap=overlap)
-        logger.info("Split into {} chunks ({} tokens, {} overlap)", len(chunks), chunk_size, overlap)
+        chunks = split_text(raw_text)
+        logger.info("Split into {} chunks (sentence-aware recursive splitter)", len(chunks))
 
         # ── Step 4: Mark embedding ─────────────────────
         source_table.update({"status": "embedding"}).eq("id", source_id).execute()
 
         # ── Step 5: Embed all chunks ───────────────────
         logger.info("Embedding {} chunks for {}", len(chunks), source_id)
-        embeddings = embed_batch(chunks)  # passage prefix by default
+        embeddings = embed_batch(chunks, api_key=api_key)  # BYOK — user's key required
 
-        # ── Step 6: Insert chunks ──────────────────────
+        # ── Step 6: Delete old chunks, then insert new ones ──
+        db.table("chunks").delete().eq("knowledge_source_id", source_id).execute()
+        logger.info("Cleared old chunks for {}", source_id)
+
         rows = [
             {
                 "knowledge_source_id": source_id,

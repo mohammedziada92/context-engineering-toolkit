@@ -1,15 +1,38 @@
+"""Embedding service — BYOK credential resolution.
+
+Architecture:
+    All embedding calls go through OpenRouter's API using the user's own
+    OpenRouter API key. There is NO fallback to a server-level key.
+
+Credential resolution order:
+    1. api_key argument — the user's decrypted key from user_settings
+    2. If None / empty → raise ValueError immediately
+
+The caller is responsible for retrieving the user's key via
+vault_service.get_decrypted_key(user_id) before calling embed functions.
+"""
 import openai
 
 from loguru import logger
 
 from app.core.config import settings
 
+_NO_KEY_ERROR = (
+    "No OpenRouter API key provided. "
+    "The user must add their key in Settings before using embeddings."
+)
+
 
 def _get_client(api_key: str | None = None) -> openai.OpenAI:
-    """Return an OpenAI client pointed at OpenRouter's API."""
+    """Return an OpenAI client pointed at OpenRouter's API.
+
+    Raises ValueError if no api_key is provided (BYOK — no server fallback).
+    """
+    if not api_key:
+        raise ValueError(_NO_KEY_ERROR)
     return openai.OpenAI(
         base_url="https://openrouter.ai/api/v1",
-        api_key=api_key or settings.OPENROUTER_API_KEY,
+        api_key=api_key,
     )
 
 
@@ -18,7 +41,7 @@ def embed_text(text: str, api_key: str | None = None) -> list[float]:
 
     Args:
         text: The text to embed.
-        api_key: User's decrypted OpenRouter key. Falls back to global key.
+        api_key: User's decrypted OpenRouter key. Required.
     """
     client = _get_client(api_key)
     response = client.embeddings.create(
@@ -33,7 +56,7 @@ def embed_batch(texts: list[str], api_key: str | None = None) -> list[list[float
 
     Args:
         texts: The texts to embed (max 2048 per OpenAI API limit).
-        api_key: User's decrypted OpenRouter key. Falls back to global key.
+        api_key: User's decrypted OpenRouter key. Required.
     """
     if not texts:
         return []

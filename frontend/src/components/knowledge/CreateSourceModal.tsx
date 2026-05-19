@@ -8,10 +8,6 @@ import { Button }   from '@/components/ui/button'
 import { Input }    from '@/components/ui/input'
 import { Label }    from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 
 const schema = z.object({
   name:            z.string().min(2, 'Min 2 characters').max(100, 'Max 100 characters'),
@@ -21,11 +17,6 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>
 
-const EMBEDDING_MODELS = [
-  { id: 'text-embedding-3-small', label: 'text-embedding-3-small (OpenAI, fast + cheap)' },
-  { id: 'text-embedding-3-large', label: 'text-embedding-3-large (OpenAI, high quality)' },
-]
-
 interface Props {
   creating: boolean
   onCreate: (data: { name: string; description?: string; embedding_model?: string }) => void
@@ -33,9 +24,9 @@ interface Props {
 }
 
 export function CreateSourceModal({ creating, onCreate, onClose }: Props) {
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { embedding_model: 'text-embedding-3-small' },
+    defaultValues: { embedding_model: 'baai/bge-m3' },
   })
 
   return (
@@ -68,7 +59,7 @@ export function CreateSourceModal({ creating, onCreate, onClose }: Props) {
               autoFocus
             />
             {errors.name && (
-              <p className="text-[11px] text-red-400">{errors.name.message}</p>
+              <p className="text-[11px] text-red-400">{errors.name.message as string}</p>
             )}
           </div>
 
@@ -81,27 +72,17 @@ export function CreateSourceModal({ creating, onCreate, onClose }: Props) {
               className="bg-zinc-900 border-zinc-800 text-zinc-200 text-sm resize-none"
             />
             {errors.description && (
-              <p className="text-[11px] text-red-400">{errors.description.message}</p>
+              <p className="text-[11px] text-red-400">{errors.description.message as string}</p>
             )}
           </div>
 
           <div className="space-y-1.5">
             <Label className="text-xs text-zinc-400">Embedding Model</Label>
-            <Select
-              defaultValue="text-embedding-3-small"
-              onValueChange={(v) => setValue('embedding_model', v ?? '')}
-            >
-              <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-300 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800">
-                {EMBEDDING_MODELS.map((m) => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <p className="text-xs text-zinc-300 bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2">
+              baai/bge-m3 (1024-dim, via OpenRouter)
+            </p>
             <p className="text-[10px] text-zinc-600">
-              Cannot be changed after creation — all chunks use the same embedding space.
+              Configured server-side. All chunks share the same embedding space.
             </p>
           </div>
 

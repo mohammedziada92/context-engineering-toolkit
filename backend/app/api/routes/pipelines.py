@@ -104,6 +104,7 @@ async def run_pipeline_stream(
             user_id=user_id,
             session_id=str(uuid.uuid4()),
             model_override=model_override,
+            api_key=api_key,
         ):
             yield f"event: {event_type}\ndata: {json.dumps(event_data)}\n\n"
 
@@ -138,6 +139,7 @@ async def run_pipeline_post(
             session_id=run_id,
             pipeline_id=pipeline_id,
             model_override=body.get("model_override"),
+            api_key=api_key,
         )
     )
     return {"run_id": run_id}

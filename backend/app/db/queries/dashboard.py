@@ -57,10 +57,11 @@ async def get_stats(user_id: str) -> dict:
     pipeline_count = pipelines_res.count or 0
     run_count = runs_all_res.count or 0
     has_key = bool(settings.get("openrouter_api_key"))
+    kb_count = kb_res.count or 0
 
     onboarding_complete = (
         settings.get("onboarding_complete", False)
-        or (has_key and pipeline_count > 0 and run_count > 0)
+        or (kb_count > 0 and pipeline_count > 0 and has_key and run_count > 0)
     )
 
     cost_today_usd = sum(r.get("cost_usd", 0) for r in runs_today)
@@ -171,6 +172,7 @@ async def get_dashboard(user_id: str) -> dict:
         "recent_sources": recent_sources,
         "onboarding": {
             "has_api_key": bool(stats.get("has_api_key")),
+            "has_knowledge_source": stats.get("knowledge_source_count", 0) > 0,
             "has_pipeline": stats.get("pipeline_count", 0) > 0,
             "has_run": stats.get("run_count", 0) > 0,
             "complete": stats.get("onboarding_complete", False),

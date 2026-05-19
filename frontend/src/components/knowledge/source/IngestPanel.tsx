@@ -114,7 +114,7 @@ export function IngestPanel({ sourceId }: { sourceId: string }) {
       {noApiKey && (
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>No API key configured. Embeddings will fail without an OpenRouter key.</span>
+          <span>An OpenRouter API key is required to embed documents. Add yours in Settings.</span>
           <a href="/settings/api-keys" className="ml-auto shrink-0 underline hover:text-amber-300">Go to Settings</a>
         </div>
       )}
@@ -156,7 +156,7 @@ export function IngestPanel({ sourceId }: { sourceId: string }) {
           <Button
             type="submit" size="sm"
             className="bg-violet-600 hover:bg-violet-500 text-white"
-            disabled={loading}
+            disabled={loading || noApiKey}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
             {loading ? 'Ingesting…' : 'Ingest Text'}
@@ -168,8 +168,8 @@ export function IngestPanel({ sourceId }: { sourceId: string }) {
       {mode === 'file' && (
         <div className="space-y-4">
           <div
-            onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed border-zinc-800 rounded-xl p-10 text-center cursor-pointer hover:border-zinc-600 hover:bg-zinc-900/50 transition-colors"
+            onClick={() => !noApiKey && fileRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${noApiKey ? 'border-zinc-800 opacity-40 cursor-not-allowed' : 'border-zinc-800 cursor-pointer hover:border-zinc-600 hover:bg-zinc-900/50'}`}
           >
             <Upload className="h-8 w-8 text-zinc-600 mx-auto mb-3" />
             <p className="text-sm font-medium text-zinc-400">Click to upload</p>
@@ -211,7 +211,7 @@ export function IngestPanel({ sourceId }: { sourceId: string }) {
           <Button
             type="submit" size="sm"
             className="bg-violet-600 hover:bg-violet-500 text-white"
-            disabled={loading}
+            disabled={loading || noApiKey}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
             {loading ? 'Fetching…' : 'Ingest URL'}

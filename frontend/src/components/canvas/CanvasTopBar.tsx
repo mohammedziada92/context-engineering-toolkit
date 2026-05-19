@@ -2,10 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Save, Play, Loader2, MoreHorizontal, AlertTriangle, XCircle } from 'lucide-react'
+import { ChevronLeft, Save, Play, Loader2, MoreHorizontal, AlertTriangle, XCircle, ChevronDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input }  from '@/components/ui/input'
-import { Badge }  from '@/components/ui/badge'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -19,17 +18,18 @@ import { usePipelineStore, validatePipeline } from '@/stores/pipeline.store'
 import { toast } from 'sonner'
 
 interface Props {
-  onSave:      () => Promise<void>
-  onRun:       () => void
-  onDuplicate: () => void
-  onDelete:    () => void
-  onExport:    () => void
-  onNameChange?: (name: string) => Promise<void>
-  showHistory?: boolean
+  onSave:         () => Promise<void>
+  onRun:          () => void
+  onDuplicate:    () => void
+  onDelete:       () => void
+  onExport:       () => void
+  onNameChange?:  (name: string) => Promise<void>
+  onStatusChange?: (status: 'draft' | 'active') => void
+  showHistory?:   boolean
 }
 
 export function CanvasTopBar({
-  onSave, onRun, onDuplicate, onDelete, onExport, onNameChange, showHistory,
+  onSave, onRun, onDuplicate, onDelete, onExport, onNameChange, onStatusChange, showHistory,
 }: Props) {
   const router = useRouter()
   const pipelineName    = usePipelineStore((s) => s.pipelineName)
@@ -129,17 +129,34 @@ export function CanvasTopBar({
         <span className="h-1.5 w-1.5 rounded-full bg-amber-400" title="Unsaved changes" />
       )}
 
-      {/* Status badge */}
-      <Badge
-        variant="outline"
-        className={
-          status === 'active'
-            ? 'border-transparent bg-emerald-500/10 text-emerald-400 text-xs'
-            : 'border-transparent bg-zinc-800 text-zinc-400 text-xs'
-        }
-      >
-        {status === 'active' ? 'Active' : 'Draft'}
-      </Badge>
+      {/* Status dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border transition-colors outline-none
+            ${status === 'active'
+              ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15'
+              : 'border-zinc-700 text-zinc-400 bg-zinc-800/80 hover:bg-zinc-700'
+            } ${!onStatusChange ? 'cursor-default' : 'cursor-pointer'}`}
+          disabled={!onStatusChange}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${status === 'active' ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+          {status === 'active' ? 'Active' : 'Draft'}
+          {onStatusChange && <ChevronDown className="w-3 h-3 ml-0.5 opacity-60" />}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-28 bg-zinc-900 border-zinc-800">
+          {(['draft', 'active'] as const).map((s) => (
+            <DropdownMenuItem
+              key={s}
+              onClick={() => onStatusChange?.(s)}
+              className={`flex items-center gap-2 text-xs ${s === 'active' ? 'text-emerald-400' : 'text-zinc-400'}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${s === 'active' ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+              {s === 'active' ? 'Active' : 'Draft'}
+              {status === s && <Check className="w-3 h-3 ml-auto" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Spacer */}
       <div className="flex-1" />
