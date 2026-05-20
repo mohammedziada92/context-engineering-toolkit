@@ -2,9 +2,6 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { listPipelines, type PipelinesListResponse, type Pipeline } from '@/lib/api/pipelines'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 
@@ -52,24 +49,18 @@ export function PipelineModeToggle({ mode, pipelineId, onModeChange, onPipelineC
       {/* Pipeline selector */}
       {mode === 'pipeline' && (
         <div className="space-y-2">
-          <Select value={pipelineId ?? ''} onValueChange={(v) => { if (v) onPipelineChange(v) }}>
-            <SelectTrigger className="h-8 bg-zinc-900 border-zinc-700 text-zinc-100 text-xs hover:bg-zinc-800">
-              <SelectValue placeholder="Select a pipeline…">
-                {(value: string | null) => {
-                  if (!value) return 'Select a pipeline…'
-                  const pipeline = activePipelines.find((p) => p.id === value)
-                  return pipeline?.name ?? value
-                }}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-800">
-              {activePipelines.map((p) => (
-                <SelectItem key={p.id} value={p.id} className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100">
-                  {p.name} <span className="text-zinc-500">({typeof (p.pipeline_config as Record<string, unknown>)?.model === 'string' ? ((p.pipeline_config as Record<string, string>).model).split('/').pop() : 'unknown'} · {(p.canvas_state as { nodes?: unknown[] })?.nodes?.length ?? '?'} nodes)</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <select
+            value={pipelineId ?? ''}
+            onChange={(e) => { if (e.target.value) onPipelineChange(e.target.value) }}
+            className="flex h-8 w-full items-center rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 text-xs text-zinc-100 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none hover:bg-zinc-800"
+          >
+            <option value="" disabled>Select a pipeline…</option>
+            {activePipelines.map((p) => {
+              const model = typeof (p.pipeline_config as Record<string, unknown>)?.model === 'string' ? ((p.pipeline_config as Record<string, string>).model).split('/').pop() : 'unknown'
+              const nodes = (p.canvas_state as { nodes?: unknown[] })?.nodes?.length ?? '?'
+              return <option key={p.id} value={p.id}>{p.name} ({model} · {nodes} nodes)</option>
+            })}
+          </select>
 
           {pipelineId && (
             <Link

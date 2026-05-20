@@ -6,9 +6,6 @@ import { X, Trash2 } from 'lucide-react'
 import { usePipelineStore } from '@/stores/pipeline.store'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
@@ -159,19 +156,15 @@ export function ConfigPanel() {
           <>
             <div className="space-y-1.5">
               <Label className="text-xs text-zinc-400">Compression Strategy</Label>
-              <Select
+              <select
                 value={(d.strategy ?? 'keep') as string}
-                onValueChange={(v) => update({ strategy: v })}
+                onChange={(e) => update({ strategy: e.target.value })}
+                className="flex h-8 w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-xs text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
               >
-                <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-300 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="end" className="bg-zinc-900 border-zinc-800">
-                  <SelectItem value="keep">Keep all</SelectItem>
-                  <SelectItem value="summarize">Summarize</SelectItem>
-                  <SelectItem value="truncate">Truncate</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="keep">Keep all</option>
+                <option value="summarize">Summarize</option>
+                <option value="truncate">Truncate</option>
+              </select>
               <p className="text-[10px] text-zinc-500 leading-relaxed">
                 {d.strategy === 'summarize'
                   ? 'LLM compresses history before injecting — adds latency but saves tokens'
@@ -195,21 +188,15 @@ export function ConfigPanel() {
           <>
             <div className="space-y-1.5">
               <Label className="text-xs text-zinc-400">Model</Label>
-              <Select value={(d.model ?? '') as string} onValueChange={(v) => update({ model: v })}>
-                <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-300 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="end" className="bg-zinc-900 border-zinc-800">
-                  {SUPPORTED_MODELS.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      <div className="flex flex-col">
-                        <span>{m.name}</span>
-                        <span className="text-[10px] text-zinc-500">{m.provider}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <select
+                value={(d.model ?? '') as string}
+                onChange={(e) => update({ model: e.target.value })}
+                className="flex h-8 w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-xs text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+              >
+                {SUPPORTED_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name} — {m.provider}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1.5">
@@ -249,15 +236,14 @@ export function ConfigPanel() {
         {type === 'output' && (
           <div className="space-y-1.5">
             <Label className="text-xs text-zinc-400">Output Format</Label>
-            <Select value={(d.format ?? 'text') as string} onValueChange={(v) => update({ format: v })}>
-              <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-300 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="end" className="bg-zinc-900 border-zinc-800">
-                <SelectItem value="markdown">Markdown</SelectItem>
-                <SelectItem value="plain">Plain text</SelectItem>
-              </SelectContent>
-            </Select>
+            <select
+              value={(d.format ?? 'text') as string}
+              onChange={(e) => update({ format: e.target.value })}
+              className="flex h-8 w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-xs text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+            >
+              <option value="markdown">Markdown</option>
+              <option value="plain">Plain text</option>
+            </select>
           </div>
         )}
       </div>

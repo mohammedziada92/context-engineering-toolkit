@@ -4,13 +4,6 @@ import { useState, useRef, useEffect } from 'react'
 import { X, Play, Loader2, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { type Pipeline } from '@/lib/api/pipelines'
 import { SUPPORTED_MODELS } from '@/lib/models'
 import { getAuthHeader } from '@/lib/api/api'
@@ -121,19 +114,16 @@ export function RunModal({ pipeline, onClose }: Props) {
           {/* Model override */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-400">Model Override</label>
-            <Select value={modelOverride} onValueChange={(v) => { if (v !== null) setModel(v) }}>
-              <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-300 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800">
-                <SelectItem value="default">Use pipeline default</SelectItem>
-                {SUPPORTED_MODELS.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              value={modelOverride}
+              onChange={(e) => { if (e.target.value !== null) setModel(e.target.value) }}
+              className="flex h-9 w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-sm text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+            >
+              <option value="default">Use pipeline default</option>
+              {SUPPORTED_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Output area */}
