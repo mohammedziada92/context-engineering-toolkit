@@ -115,26 +115,16 @@ export function ConfigPanel() {
           <>
             <div className="space-y-1.5">
               <Label className="text-xs text-zinc-400">Knowledge Source</Label>
-              <Select
+              <select
                 value={(d.knowledge_source_id as string) ?? 'none'}
-                onValueChange={(v) => update({ knowledge_source_id: v === 'none' ? null : v })}
+                onChange={(e) => update({ knowledge_source_id: e.target.value === 'none' ? null : e.target.value })}
+                className="flex h-8 w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-xs text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
               >
-                <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-300 text-xs">
-                  <SelectValue placeholder="Select source...">
-                    {(value: string | null) => {
-                      if (!value || value === 'none') return 'Select source...'
-                      const source = (kbSources ?? []).find((s: { id: string; name: string }) => s.id === value)
-                      return source?.name ?? value
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent align="end" className="bg-zinc-900 border-zinc-800">
-                  <SelectItem value="none">None</SelectItem>
-                  {(kbSources ?? []).map((s: { id: string; name: string }) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="none">None</option>
+                {(kbSources ?? []).map((s: { id: string; name: string }) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
             </div>
 
             <NumberField label="Top K" value={(d.top_k ?? 5) as number} min={1} max={20}
