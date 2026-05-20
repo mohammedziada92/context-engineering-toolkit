@@ -213,6 +213,8 @@ services:
       - "8000:8000"
     env_file:
       - ./backend/.env
+    volumes:
+      - ./backend/app:/app/app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
@@ -236,6 +238,11 @@ services:
       - "3000:3000"
     env_file:
       - ./frontend/.env.local
+    environment:
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
     restart: unless-stopped
     networks:
       - cet-network
