@@ -73,15 +73,60 @@ C:\tmp\cet-env\Scripts\uvicorn app.main:app --reload --port 8000
 
 ---
 
+## Common Errors
+
+### New service module not picked up after `--reload`
+
+uvicorn's file watcher detects `.py` changes, but Python's import system loads stale `.pyc` bytecode from `__pycache__` when present. If a newly created or renamed module is not taking effect:
+
+```bash
+# Clear all stale bytecode, then restart
+find backend -type d -name __pycache__ -exec rm -rf {} +
+docker compose restart backend
+
+# Or if running locally:
+# 1. Kill uvicorn (check for orphan worker children too)
+# 2. Run the find command above
+# 3. Restart uvicorn
+```
+
+---
+
 ## Docker (Full Stack)
 
 ```bash
+# Start all services
 docker compose up -d
+
+# Rebuild after code changes (volume mounts handle hot-reload for most edits)
+docker compose up -d --build
 ```
 
 This starts: Postgres, GoTrue (auth), PostgREST, Realtime, Storage, Studio, Backend, Frontend.
 
 See `docker-compose.yml` for port mappings.
+
+### Stopping services safely
+
+```bash
+# Safe — stops containers, preserves database data
+docker compose down
+
+# NEVER run this — destroys all named volumes including your database
+docker compose down -v    # ⚠️ DATA LOSS — do not use
+```
+
+The `-v` flag deletes named volumes (`postgres-data`, `storage-data`), wiping all knowledge bases, chunks, pipelines, and user data irreversibly. If the database appears empty after a restart, this is the likely cause.
+
+### Database backup (recommended before restarts)
+
+```bash
+# Export a snapshot before shutting down
+docker exec cet-db pg_dump -U postgres postgres > backup_$(date +%Y%m%d).sql
+
+# Restore if needed
+docker exec -i cet-db psql -U postgres postgres < backup_20260519.sql
+```
 
 ---
 

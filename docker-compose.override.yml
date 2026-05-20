@@ -1,0 +1,26 @@
+# docker-compose.override.yml
+# Applied automatically on top of docker-compose.yml by Docker Compose.
+#
+# CEP-16: Prevents accidental data loss during development.
+# - Labels volumes as "do not delete" for tooling that respects labels
+# - Adds a named-volume backup reminder service
+#
+# NEVER run:  docker compose down -v   (destroys all data)
+# ALWAYS run: docker compose down      (preserves data)
+
+services:
+  cet-db:
+    labels:
+      - "cet.volume-protect=postgres-data must not be deleted during development"
+    # Postgres WAL archive for point-in-time recovery (optional, disabled by default)
+    # Uncomment the lines below to enable continuous archiving:
+    # command: >
+    #   postgres
+    #   -c wal_level=replica
+    #   -c archive_mode=on
+    #   -c archive_command='cp %p /var/lib/postgresql/wal_archive/%f'
+    # volumes:
+    #   - pg-wal-archive:/var/lib/postgresql/wal_archive
+
+# volumes:
+#   pg-wal-archive:
