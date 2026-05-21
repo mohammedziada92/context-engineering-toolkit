@@ -3,13 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, LayoutGrid, List } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -56,29 +49,27 @@ export function PipelinesToolbar({
       </div>
 
       {/* Status filter */}
-      <Select value={status || 'all'} onValueChange={(v) => onStatusChange((v ?? 'all') === 'all' ? '' : v ?? '')}>
-        <SelectTrigger className="w-[130px] bg-zinc-900 border-zinc-800 text-zinc-300">
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent className="bg-zinc-900 border-zinc-800">
-          <SelectItem value="all">All Status</SelectItem>
-          <SelectItem value="active">Active</SelectItem>
-          <SelectItem value="draft">Draft</SelectItem>
-        </SelectContent>
-      </Select>
+      <select
+        value={status || 'all'}
+        onChange={(e) => onStatusChange(e.target.value === 'all' ? '' : e.target.value)}
+        className="flex h-9 w-[130px] items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-sm text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+      >
+        <option value="all">All Status</option>
+        <option value="active">Active</option>
+        <option value="draft">Draft</option>
+      </select>
 
       {/* Sort */}
-      <Select value={sort} onValueChange={(v) => onSortChange(v ?? '')}>
-        <SelectTrigger className="w-[150px] bg-zinc-900 border-zinc-800 text-zinc-300">
-          <SelectValue placeholder="Sort by" />
-        </SelectTrigger>
-        <SelectContent className="bg-zinc-900 border-zinc-800">
-          <SelectItem value="updated_at">Last Updated</SelectItem>
-          <SelectItem value="created_at">Date Created</SelectItem>
-          <SelectItem value="name">Name A–Z</SelectItem>
-          <SelectItem value="run_count">Most Runs</SelectItem>
-        </SelectContent>
-      </Select>
+      <select
+        value={sort}
+        onChange={(e) => onSortChange(e.target.value)}
+        className="flex h-9 w-[150px] items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-sm text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+      >
+        <option value="updated_at">Last Updated</option>
+        <option value="created_at">Date Created</option>
+        <option value="name">Name A–Z</option>
+        <option value="run_count">Most Runs</option>
+      </select>
 
       {/* View toggle */}
       <div className="flex rounded-md border border-zinc-800 overflow-hidden">

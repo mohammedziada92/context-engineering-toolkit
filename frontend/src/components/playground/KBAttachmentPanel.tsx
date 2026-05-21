@@ -3,9 +3,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api/api'
 import { Label } from '@/components/ui/label'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -45,25 +42,16 @@ export function KBAttachmentPanel({
       </div>
 
       <div className={cn(disabled && 'opacity-50 pointer-events-none cursor-not-allowed')} title={disabled ? 'KB selection only applies in Pipeline mode' : undefined}>
-        <Select value={knowledgeSourceId ?? 'none'} onValueChange={(v) => onKBChange(v === 'none' ? null : v)}>
-          <SelectTrigger className="h-8 bg-zinc-900 border-zinc-700 text-zinc-100 text-xs hover:bg-zinc-800">
-            <SelectValue placeholder="None">
-              {(value: string | null) => {
-                if (!value || value === 'none') return 'None'
-                const source = sources.find((s) => s.id === value)
-                return source?.name ?? value
-              }}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-800">
-            <SelectItem value="none" className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100">None</SelectItem>
-            {sources.map((s) => (
-              <SelectItem key={s.id} value={s.id} className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100">
-                {s.name} <span className="text-zinc-500">({s.total_chunks?.toLocaleString() ?? 0} chunks)</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <select
+          value={knowledgeSourceId ?? 'none'}
+          onChange={(e) => onKBChange(e.target.value === 'none' ? null : e.target.value)}
+          className="flex h-8 w-full items-center rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 text-xs text-zinc-100 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none hover:bg-zinc-800"
+        >
+          <option value="none">None</option>
+          {sources.map((s) => (
+            <option key={s.id} value={s.id}>{s.name} ({s.total_chunks?.toLocaleString() ?? 0} chunks)</option>
+          ))}
+        </select>
       </div>
 
       <p className="text-[11px] text-zinc-600">

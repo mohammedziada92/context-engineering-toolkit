@@ -3,10 +3,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search } from 'lucide-react'
 import { Input }  from '@/components/ui/input'
-import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import type { KnowledgeSourceStatus } from '@/lib/api/knowledge'
 
 interface Props {
@@ -45,18 +41,17 @@ export function KnowledgeToolbar({ search, status, onSearch, onStatus }: Props) 
       </div>
 
       {/* Status filter */}
-      <Select value={status || 'all'} onValueChange={(v) => onStatus(v === 'all' ? '' : v as KnowledgeSourceStatus)}>
-        <SelectTrigger className="w-[140px] bg-zinc-900 border-zinc-800 text-zinc-300 text-xs h-8">
-          <SelectValue placeholder="All statuses" />
-        </SelectTrigger>
-        <SelectContent className="bg-zinc-900 border-zinc-800">
-          <SelectItem value="all">All statuses</SelectItem>
-          <SelectItem value="ready">Ready</SelectItem>
-          <SelectItem value="processing">Processing</SelectItem>
-          <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="error">Error</SelectItem>
-        </SelectContent>
-      </Select>
+      <select
+        value={status || 'all'}
+        onChange={(e) => onStatus(e.target.value === 'all' ? '' : e.target.value as KnowledgeSourceStatus)}
+        className="flex h-8 w-[140px] items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-xs text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+      >
+        <option value="all">All statuses</option>
+        <option value="ready">Ready</option>
+        <option value="processing">Processing</option>
+        <option value="pending">Pending</option>
+        <option value="error">Error</option>
+      </select>
     </div>
   )
 }

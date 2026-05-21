@@ -7,10 +7,6 @@ import { CheckCircle2, XCircle, MinusCircle, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Badge }  from '@/components/ui/badge'
 import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import {
   Pagination, PaginationContent, PaginationItem,
   PaginationNext, PaginationPrevious,
 } from '@/components/ui/pagination'
@@ -66,17 +62,16 @@ export function RunHistoryTable({ period }: Props) {
 
         {/* Filters */}
         <div className="flex gap-2">
-          <Select value={status || 'all'} onValueChange={(v) => { setStatus(v === 'all' ? '' : v as RunRecord['status']); setPage(1) }}>
-            <SelectTrigger className="h-7 w-[120px] text-[11px] bg-zinc-800 border-zinc-700 text-zinc-300">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-800 text-xs">
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="success">Success</SelectItem>
-              <SelectItem value="error">Error</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
+          <select
+            value={status || 'all'}
+            onChange={(e) => { setStatus(e.target.value === 'all' ? '' : e.target.value as RunRecord['status']); setPage(1) }}
+            className="flex h-7 w-[120px] items-center rounded-lg border border-zinc-700 bg-zinc-800 px-2 text-[11px] text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+          >
+            <option value="all">All statuses</option>
+            <option value="success">Success</option>
+            <option value="error">Error</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
         </div>
       </div>
 

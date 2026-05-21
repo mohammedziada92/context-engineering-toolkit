@@ -1,9 +1,5 @@
 'use client'
 
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-
 interface ModelSelectorProps {
   value: string
   onChange: (model: string) => void
@@ -18,17 +14,14 @@ const MODELS = [
 
 export function ModelSelector({ value, onChange, className }: ModelSelectorProps) {
   return (
-    <Select value={value} onValueChange={(v) => { if (v) onChange(v) }}>
-      <SelectTrigger className={`h-8 bg-zinc-900 border-zinc-700 text-zinc-100 text-xs hover:bg-zinc-800 ${className ?? ''}`}>
-        <SelectValue placeholder="Select model…" />
-      </SelectTrigger>
-      <SelectContent className="bg-zinc-900 border-zinc-800">
-        {MODELS.map((m) => (
-          <SelectItem key={m.id} value={m.id} className="text-xs text-zinc-200 focus:bg-zinc-800 focus:text-zinc-100">
-            {m.label} <span className="text-zinc-500">({m.provider})</span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <select
+      value={value}
+      onChange={(e) => { if (e.target.value) onChange(e.target.value) }}
+      className={`flex h-8 w-full items-center rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 text-xs text-zinc-100 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none hover:bg-zinc-800 ${className ?? ''}`}
+    >
+      {MODELS.map((m) => (
+        <option key={m.id} value={m.id}>{m.label} ({m.provider})</option>
+      ))}
+    </select>
   )
 }
