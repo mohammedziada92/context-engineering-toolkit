@@ -115,7 +115,7 @@ export function ConfigPanel() {
               <select
                 value={(d.knowledge_source_id as string) ?? 'none'}
                 onChange={(e) => update({ knowledge_source_id: e.target.value === 'none' ? null : e.target.value })}
-                className="flex h-8 w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-xs text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+                className="select-native w-full"
               >
                 <option value="none">None</option>
                 {(kbSources ?? []).map((s: { id: string; name: string }) => (
@@ -159,7 +159,7 @@ export function ConfigPanel() {
               <select
                 value={(d.strategy ?? 'keep') as string}
                 onChange={(e) => update({ strategy: e.target.value })}
-                className="flex h-8 w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-xs text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+                className="select-native w-full"
               >
                 <option value="keep">Keep all</option>
                 <option value="summarize">Summarize</option>
@@ -191,7 +191,7 @@ export function ConfigPanel() {
               <select
                 value={(d.model ?? '') as string}
                 onChange={(e) => update({ model: e.target.value })}
-                className="flex h-8 w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-xs text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+                className="select-native w-full"
               >
                 {SUPPORTED_MODELS.map((m) => (
                   <option key={m.id} value={m.id}>{m.name} — {m.provider}</option>
@@ -239,7 +239,7 @@ export function ConfigPanel() {
             <select
               value={(d.format ?? 'text') as string}
               onChange={(e) => update({ format: e.target.value })}
-              className="flex h-8 w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-xs text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+              className="select-native w-full"
             >
               <option value="markdown">Markdown</option>
               <option value="plain">Plain text</option>

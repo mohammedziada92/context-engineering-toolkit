@@ -52,7 +52,7 @@ export function PipelineModeToggle({ mode, pipelineId, onModeChange, onPipelineC
           <select
             value={pipelineId ?? ''}
             onChange={(e) => { if (e.target.value) onPipelineChange(e.target.value) }}
-            className="flex h-8 w-full items-center rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 text-xs text-zinc-100 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none hover:bg-zinc-800"
+            className="select-native w-full"
           >
             <option value="" disabled>Select a pipeline…</option>
             {activePipelines.map((p) => {

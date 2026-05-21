@@ -117,7 +117,7 @@ export function RunModal({ pipeline, onClose }: Props) {
             <select
               value={modelOverride}
               onChange={(e) => { if (e.target.value !== null) setModel(e.target.value) }}
-              className="flex h-9 w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-sm text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+              className="select-native w-full" style={{height: '2.25rem', fontSize: '0.875rem'}}
             >
               <option value="default">Use pipeline default</option>
               {SUPPORTED_MODELS.map((m) => (

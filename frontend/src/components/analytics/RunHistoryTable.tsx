@@ -65,7 +65,7 @@ export function RunHistoryTable({ period }: Props) {
           <select
             value={status || 'all'}
             onChange={(e) => { setStatus(e.target.value === 'all' ? '' : e.target.value as RunRecord['status']); setPage(1) }}
-            className="flex h-7 w-[120px] items-center rounded-lg border border-zinc-700 bg-zinc-800 px-2 text-[11px] text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+            className="select-native w-[120px]" style={{height: '1.75rem', fontSize: '0.6875rem'}}
           >
             <option value="all">All statuses</option>
             <option value="success">Success</option>

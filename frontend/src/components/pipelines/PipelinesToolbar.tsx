@@ -52,7 +52,7 @@ export function PipelinesToolbar({
       <select
         value={status || 'all'}
         onChange={(e) => onStatusChange(e.target.value === 'all' ? '' : e.target.value)}
-        className="flex h-9 w-[130px] items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-sm text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+        className="select-native w-[130px]" style={{height: '2.25rem', fontSize: '0.875rem'}}
       >
         <option value="all">All Status</option>
         <option value="active">Active</option>
@@ -63,7 +63,7 @@ export function PipelinesToolbar({
       <select
         value={sort}
         onChange={(e) => onSortChange(e.target.value)}
-        className="flex h-9 w-[150px] items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-sm text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+        className="select-native w-[150px]" style={{height: '2.25rem', fontSize: '0.875rem'}}
       >
         <option value="updated_at">Last Updated</option>
         <option value="created_at">Date Created</option>

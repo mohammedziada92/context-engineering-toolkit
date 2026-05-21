@@ -44,7 +44,7 @@ export function KnowledgeToolbar({ search, status, onSearch, onStatus }: Props) 
       <select
         value={status || 'all'}
         onChange={(e) => onStatus(e.target.value === 'all' ? '' : e.target.value as KnowledgeSourceStatus)}
-        className="flex h-8 w-[140px] items-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-xs text-zinc-300 outline-none focus-visible:border-violet-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/20 cursor-pointer appearance-none"
+        className="select-native w-[140px]"
       >
         <option value="all">All statuses</option>
         <option value="ready">Ready</option>
