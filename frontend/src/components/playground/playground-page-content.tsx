@@ -126,8 +126,8 @@ export function PlaygroundPageContent() {
     const s = await getSession(id)
     setSessionId(s.id)
     renamedRef.current = (s.messages?.length ?? 0) > 0
-    baseTokensRef.current = (s as any).total_tokens ?? 0
-    baseCostRef.current = (s as any).total_cost ?? 0
+    baseTokensRef.current = s.total_tokens ?? 0
+    baseCostRef.current = s.total_cost ?? 0
     setMessages(
       (s.messages ?? []).map((m) => ({
         id: m.id,
@@ -331,17 +331,8 @@ export function PlaygroundPageContent() {
   const sessionTokens = baseTokensRef.current + liveTokens
   const sessionCost = baseCostRef.current + liveCost
 
-  // Flush token totals on unmount via sendBeacon
-  useEffect(() => {
-    return () => {
-      if (sessionId && liveTokens > 0) {
-        const url = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/v1/playground/sessions/${sessionId}/tokens`
-        const blob = new Blob([JSON.stringify({ total_tokens: liveTokens, total_cost: liveCost })], { type: 'application/json' })
-        navigator.sendBeacon(url, blob)
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // Note: token persistence is handled server-side by _increment_session_totals
+  // during the SSE stream, so no client-side flush is needed.
 
   const sessionExport: SessionExport = {
     created_at: new Date().toISOString(),

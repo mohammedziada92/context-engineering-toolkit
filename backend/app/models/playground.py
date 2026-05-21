@@ -73,6 +73,8 @@ class ChatSessionResponse(BaseModel):
     pipeline_id: UUID | None
     config: dict | None = None
     message_count: int = 0
+    total_tokens: int = 0
+    total_cost: float = 0.0
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
