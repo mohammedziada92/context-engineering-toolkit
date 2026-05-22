@@ -1,7 +1,7 @@
 """Token-aware text chunking for RAG retrieval.
 
 Splits text into ~400-token chunks at semantic boundaries (paragraphs,
-sentences, words — never mid-word).  Adds ~80-token overlap using the
+sentences, words — never mid-word).  Adds ~120-token overlap using the
 last complete sentences of the previous chunk.
 """
 
@@ -14,7 +14,7 @@ _enc = tiktoken.get_encoding("cl100k_base")
 TARGET_TOKENS = 400
 MAX_TOKENS = 550
 MIN_TOKENS = 150
-OVERLAP_TOKENS = 80
+OVERLAP_TOKENS = 120
 
 # Paragraph and sentence boundaries
 _PARA_SPLIT = re.compile(r"\n{2,}")
