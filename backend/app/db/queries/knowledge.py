@@ -299,12 +299,23 @@ async def queue_ingest_file(
             doc.close()
         except ImportError:
             text = content.decode("utf-8", errors="replace")
+    elif content_type and (
+        "wordprocessingml" in content_type
+        or (filename and filename.lower().endswith(".docx"))
+    ):
+        from docx import Document as DocxDocument
+        import io
+        doc = DocxDocument(io.BytesIO(content))
+        text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
     else:
         text = content.decode("utf-8", errors="replace")
 
+    # Strip null bytes — PostgreSQL text columns reject  
+    text = text.replace(" ", "")
+
     # Update source type to reflect actual file type
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "txt"
-    source_type = ext if ext in ("pdf", "txt") else "txt"
+    source_type = ext if ext in ("pdf", "txt", "docx", "md") else "txt"
     client.table("knowledge_sources").update({"type": source_type}).eq("id", source_id).execute()
 
     # Split and ingest
