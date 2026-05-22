@@ -310,8 +310,8 @@ async def queue_ingest_file(
     else:
         text = content.decode("utf-8", errors="replace")
 
-    # Strip null bytes — PostgreSQL text columns reject  
-    text = text.replace(" ", "")
+    # Strip null bytes — PostgreSQL text columns reject NUL
+    text = text.replace(chr(0), "")
 
     # Update source type to reflect actual file type
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "txt"
