@@ -1,7 +1,7 @@
 """Token-aware text chunking for RAG retrieval.
 
 Splits text into ~400-token chunks at semantic boundaries (paragraphs,
-sentences, words — never mid-word).  Adds ~120-token overlap using the
+sentences, words — never mid-word).  Adds ~150-token overlap using the
 last complete sentences of the previous chunk.
 """
 
@@ -14,7 +14,7 @@ _enc = tiktoken.get_encoding("cl100k_base")
 TARGET_TOKENS = 400
 MAX_TOKENS = 550
 MIN_TOKENS = 150
-OVERLAP_TOKENS = 120
+OVERLAP_TOKENS = 150
 
 # Paragraph and sentence boundaries
 _PARA_SPLIT = re.compile(r"\n{2,}")
@@ -205,10 +205,32 @@ def _split_words(text: str) -> list[str]:
 # ── Overlap ───────────────────────────────────────────────────
 
 
-def _add_overlap(chunks: list[str], overlap_tokens: int) -> list[str]:
-    """Add overlap using the last complete sentences of the previous chunk.
+def _overlap_segments(text: str) -> list[str]:
+    """Split text into fine-grained segments for overlap selection.
 
-    Caps overlap so the final chunk never exceeds MAX_TOKENS.
+    Splits on paragraph breaks first, then on sentence boundaries within
+    each paragraph.  This produces smaller units than sentence-only
+    splitting, which is critical for content like tables that have no
+    sentence-ending punctuation.
+    """
+    segments: list[str] = []
+    for para in _PARA_SPLIT.split(text):
+        para = para.strip()
+        if not para:
+            continue
+        for sent in _SENT_END.split(para):
+            sent = sent.strip()
+            if sent:
+                segments.append(sent)
+    return segments
+
+
+def _add_overlap(chunks: list[str], overlap_tokens: int) -> list[str]:
+    """Add overlap using the last segments of the previous chunk.
+
+    Uses paragraph-then-sentence splitting for finer granularity so that
+    table rows and other non-sentence content can be included in the
+    overlap.  Caps overlap so the final chunk never exceeds MAX_TOKENS.
     """
     if len(chunks) <= 1 or overlap_tokens == 0:
         return chunks
@@ -216,17 +238,16 @@ def _add_overlap(chunks: list[str], overlap_tokens: int) -> list[str]:
     result: list[str] = [chunks[0]]
     for chunk in chunks[1:]:
         chunk_tokens = _tok(chunk)
-        # Budget: overlap tokens, but never so much that chunk + overlap > MAX_TOKENS
         budget = min(overlap_tokens, max(0, MAX_TOKENS - chunk_tokens - 1))
         if budget <= 0:
             result.append(chunk)
             continue
 
         prev = result[-1]
-        sentences = _SENT_END.split(prev)
+        segments = _overlap_segments(prev)
         overlap_parts: list[str] = []
         size = 0
-        for s in reversed(sentences):
+        for s in reversed(segments):
             s = s.strip()
             if not s:
                 continue
@@ -239,7 +260,6 @@ def _add_overlap(chunks: list[str], overlap_tokens: int) -> list[str]:
         if overlap_parts:
             overlap_text = " ".join(overlap_parts)
             combined = overlap_text + " " + chunk
-            # Final token-count check (concatenation can differ from sum)
             if _tok(combined) <= MAX_TOKENS:
                 result.append(combined)
             else:
