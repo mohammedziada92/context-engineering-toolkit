@@ -533,6 +533,8 @@ export function PlaygroundPageContent() {
                   )}
                 </div>
                 )}
+
+                {msg.role === 'assistant' && msg.meta && !msg.streaming && (
                   <div className="flex items-center gap-2 text-xs text-zinc-500 tabular-nums ml-1">
                     <span>{msg.meta.tokens_in + msg.meta.tokens_out} tokens</span>
                     <span>·</span>
