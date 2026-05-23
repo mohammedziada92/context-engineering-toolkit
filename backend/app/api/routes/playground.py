@@ -367,6 +367,7 @@ async def chat_stream(
     effective_top_k = body.top_k
     effective_threshold = body.threshold
     nodes: dict = {}
+    pipeline_rag_has_kb = None  # None = no RAG node, True/False = RAG node KB status
 
     if body.mode == "pipeline" and body.pipeline_id:
         from app.db.queries.pipelines import get_pipeline
@@ -387,6 +388,7 @@ async def chat_stream(
                 effective_system_prompt = sp_data["content"]
             # Resolve knowledge_source_id from RAG/knowledge_source node
             rag_kb_id = rag_data.get("knowledge_source_id") or rag_data.get("source_id") or ks_data.get("source_id")
+            pipeline_rag_has_kb = bool(rag_kb_id)
             logger.info(
                 "Playground pipeline mode: pipeline_id={}, rag_kb_id={}, rag_data_keys={}, ks_data_keys={}",
                 body.pipeline_id,
@@ -460,7 +462,7 @@ async def chat_stream(
 
     async def stream() -> AsyncGenerator[str, None]:
         # Short-circuit: pipeline has RAG node but no knowledge base connected
-        if body.mode == "pipeline" and body.pipeline_id and nodes.get("rag") is not None and not effective_kb_id:
+        if body.mode == "pipeline" and body.pipeline_id and pipeline_rag_has_kb is False:
             yield _sse({
                 "status": "warning",
                 "error_code": "no_knowledge_base",
