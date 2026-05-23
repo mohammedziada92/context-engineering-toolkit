@@ -397,6 +397,8 @@ async def chat_stream(
                     logger.warning("CEP-23: RAG node has knowledge_source_id={} but KB not found in DB for user {}", rag_kb_id, user_id)
                     pipeline_rag_has_kb = False
                     rag_kb_id = None
+            elif nodes.get("rag") is not None:
+                pipeline_rag_has_kb = False
             logger.info(
                 "Playground pipeline mode: pipeline_id={}, rag_kb_id={}, rag_data_keys={}, ks_data_keys={}, pipeline_rag_has_kb={}",
                 body.pipeline_id,

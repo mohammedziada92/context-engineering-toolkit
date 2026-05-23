@@ -238,6 +238,7 @@ export function PlaygroundPageContent() {
     abortRef.current = new AbortController()
     let retrievedChunks: Message['retrieved_chunks']
     let finalMeta: Message['meta']
+    let warningReceived = false
     const startTime = Date.now()
 
     try {
@@ -253,7 +254,17 @@ export function PlaygroundPageContent() {
           if (!line.startsWith('data: ')) continue
           const data = JSON.parse(line.slice(6))
 
-          if (data.content !== undefined && !data.status) {
+          if (data.status === 'warning' && data.error_code === 'no_knowledge_base') {
+            warningReceived = true
+            setMessages((m) =>
+              m.map((msg) =>
+                msg.id === assistantId
+                  ? { ...msg, content: '', streaming: false, error_code: data.error_code, pipeline_id: data.pipeline_id ?? null }
+                  : msg
+              )
+            )
+            break
+          } else if (data.content !== undefined && !data.status) {
             setMessages((m) =>
               m.map((msg) =>
                 msg.id === assistantId ? { ...msg, content: msg.content + data.content } : msg
@@ -278,14 +289,6 @@ export function PlaygroundPageContent() {
                   : msg
               )
             )
-          } else if (data.status === 'warning' && data.error_code === 'no_knowledge_base') {
-            setMessages((m) =>
-              m.map((msg) =>
-                msg.id === assistantId
-                  ? { ...msg, content: data.message ?? '', streaming: false, error_code: data.error_code, pipeline_id: data.pipeline_id ?? null }
-                  : msg
-              )
-            )
           }
         }
       }
@@ -300,13 +303,15 @@ export function PlaygroundPageContent() {
         )
       }
     } finally {
-      setMessages((m) =>
-        m.map((msg) =>
-          msg.id === assistantId
-            ? { ...msg, streaming: false, meta: finalMeta, retrieved_chunks: retrievedChunks }
-            : msg
+      if (!warningReceived) {
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === assistantId
+              ? { ...msg, streaming: false, meta: finalMeta, retrieved_chunks: retrievedChunks }
+              : msg
+          )
         )
-      )
+      }
       setStreaming(false)
       abortRef.current = null
       // Auto-rename session after first message
