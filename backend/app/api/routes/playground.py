@@ -366,6 +366,7 @@ async def chat_stream(
     effective_kb_id = body.knowledge_source_id
     effective_top_k = body.top_k
     effective_threshold = body.threshold
+    nodes: dict = {}
 
     if body.mode == "pipeline" and body.pipeline_id:
         from app.db.queries.pipelines import get_pipeline
@@ -458,6 +459,16 @@ async def chat_stream(
     )
 
     async def stream() -> AsyncGenerator[str, None]:
+        # Short-circuit: pipeline has RAG node but no knowledge base connected
+        if body.mode == "pipeline" and body.pipeline_id and nodes.get("rag") is not None and not effective_kb_id:
+            yield _sse({
+                "status": "warning",
+                "error_code": "no_knowledge_base",
+                "pipeline_id": body.pipeline_id,
+                "message": "No Knowledge Base connected to the Vector Search node.",
+            })
+            return
+
         start_time = time.perf_counter()
         llm_response_text = ""
         prompt_tokens = token_service.count_messages_tokens(llm_messages)

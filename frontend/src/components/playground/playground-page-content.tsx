@@ -28,7 +28,9 @@ import { Switch } from '@/components/ui/switch'
 import {
   ArrowUp, Square, Trash2, Sparkles, Layers,
   MessageSquare, Plus, ChevronDown, ChevronRight,
+  AlertTriangle, ExternalLink,
 } from 'lucide-react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────────
@@ -41,6 +43,8 @@ interface Message {
   streaming?: boolean
   meta?: { tokens_in: number; tokens_out: number; cost_usd: number; latency_ms: number }
   retrieved_chunks?: Array<{ score: number; content: string; chunk_index: number; metadata: Record<string, unknown> }>
+  error_code?: string | null
+  pipeline_id?: string | null
 }
 
 interface Config {
@@ -274,6 +278,14 @@ export function PlaygroundPageContent() {
                   : msg
               )
             )
+          } else if (data.status === 'warning' && data.error_code === 'no_knowledge_base') {
+            setMessages((m) =>
+              m.map((msg) =>
+                msg.id === assistantId
+                  ? { ...msg, content: data.message ?? '', streaming: false, error_code: data.error_code, pipeline_id: data.pipeline_id ?? null }
+                  : msg
+              )
+            )
           }
         }
       }
@@ -477,6 +489,35 @@ export function PlaygroundPageContent() {
           ) : (
             messages.map((msg) => (
               <div key={msg.id} className={cn('flex flex-col gap-1', msg.role === 'user' ? 'items-end' : 'items-start')}>
+                {msg.error_code === 'no_knowledge_base' ? (
+                  <div className="max-w-[85%] rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div className="flex-1 space-y-2">
+                        <p className="text-amber-300 font-medium text-sm">No Knowledge Base Connected</p>
+                        <p className="text-amber-300/80 text-xs leading-relaxed">
+                          This pipeline has a Vector Search node but no knowledge base is attached. To enable RAG retrieval:
+                        </p>
+                        <ol className="text-amber-300/80 text-xs space-y-1 list-decimal list-inside">
+                          <li>Open the Pipeline Canvas</li>
+                          <li>Select the Vector Search node</li>
+                          <li>Choose a Knowledge Base</li>
+                          <li>Return to Playground and resend</li>
+                        </ol>
+                        {msg.pipeline_id && (
+                          <Link
+                            href={`/pipelines/${msg.pipeline_id}`}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-300 hover:text-amber-200 border border-amber-500/40 rounded px-2.5 py-1 transition-colors mt-1"
+                            target="_blank"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            View Pipeline Canvas
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                 <div className={cn(
                   'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap',
                   msg.role === 'user'
@@ -491,8 +532,7 @@ export function PlaygroundPageContent() {
                     <span className="inline-block ml-1 h-3.5 w-0.5 bg-violet-400 animate-pulse rounded-full" />
                   )}
                 </div>
-
-                {msg.role === 'assistant' && msg.meta && !msg.streaming && (
+                )}
                   <div className="flex items-center gap-2 text-xs text-zinc-500 tabular-nums ml-1">
                     <span>{msg.meta.tokens_in + msg.meta.tokens_out} tokens</span>
                     <span>·</span>
