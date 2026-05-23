@@ -388,13 +388,22 @@ async def chat_stream(
                 effective_system_prompt = sp_data["content"]
             # Resolve knowledge_source_id from RAG/knowledge_source node
             rag_kb_id = rag_data.get("knowledge_source_id") or rag_data.get("source_id") or ks_data.get("source_id")
-            pipeline_rag_has_kb = bool(rag_kb_id)
+            if rag_kb_id:
+                from app.db.queries.knowledge import get_knowledge_source
+                kb = await get_knowledge_source(rag_kb_id, user_id)
+                if kb:
+                    pipeline_rag_has_kb = True
+                else:
+                    logger.warning("CEP-23: RAG node has knowledge_source_id={} but KB not found in DB for user {}", rag_kb_id, user_id)
+                    pipeline_rag_has_kb = False
+                    rag_kb_id = None
             logger.info(
-                "Playground pipeline mode: pipeline_id={}, rag_kb_id={}, rag_data_keys={}, ks_data_keys={}",
+                "Playground pipeline mode: pipeline_id={}, rag_kb_id={}, rag_data_keys={}, ks_data_keys={}, pipeline_rag_has_kb={}",
                 body.pipeline_id,
                 rag_kb_id,
                 list(rag_data.keys()) if rag_data else [],
                 list(ks_data.keys()) if ks_data else [],
+                pipeline_rag_has_kb,
             )
             if rag_kb_id:
                 effective_kb_id = rag_kb_id
@@ -461,16 +470,6 @@ async def chat_stream(
     )
 
     async def stream() -> AsyncGenerator[str, None]:
-        # CEP-23 diagnostic: log all short-circuit inputs
-        logger.warning(
-            "CEP-23 short-circuit check: mode={}, pipeline_id={}, nodes_keys={}, rag_node={}, rag_node_type={}, pipeline_rag_has_kb={}",
-            body.mode,
-            body.pipeline_id,
-            list(nodes.keys()),
-            nodes.get("rag"),
-            type(nodes.get("rag")),
-            pipeline_rag_has_kb,
-        )
         # Short-circuit: pipeline has RAG node but no knowledge base connected
         if body.mode == "pipeline" and body.pipeline_id and nodes.get("rag") is not None and pipeline_rag_has_kb is False:
             yield _sse({
