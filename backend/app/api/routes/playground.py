@@ -461,8 +461,18 @@ async def chat_stream(
     )
 
     async def stream() -> AsyncGenerator[str, None]:
+        # CEP-23 diagnostic: log all short-circuit inputs
+        logger.warning(
+            "CEP-23 short-circuit check: mode={}, pipeline_id={}, nodes_keys={}, rag_node={}, rag_node_type={}, pipeline_rag_has_kb={}",
+            body.mode,
+            body.pipeline_id,
+            list(nodes.keys()),
+            nodes.get("rag"),
+            type(nodes.get("rag")),
+            pipeline_rag_has_kb,
+        )
         # Short-circuit: pipeline has RAG node but no knowledge base connected
-        if body.mode == "pipeline" and body.pipeline_id and pipeline_rag_has_kb is False:
+        if body.mode == "pipeline" and body.pipeline_id and nodes.get("rag") is not None and pipeline_rag_has_kb is False:
             yield _sse({
                 "status": "warning",
                 "error_code": "no_knowledge_base",

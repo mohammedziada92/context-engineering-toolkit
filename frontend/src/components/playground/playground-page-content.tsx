@@ -463,7 +463,17 @@ export function PlaygroundPageContent() {
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-          {messages.length === 0 ? (
+          {messages.length === 0 && config.mode === 'pipeline' && !config.pipeline_id ? (
+            <div className="flex flex-col items-center justify-center h-full text-center gap-5 pb-16">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-amber-300 mb-1">No Pipeline Selected</h3>
+                <p className="text-sm text-amber-300/70">Select a pipeline from the dropdown above to start chatting.</p>
+              </div>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center gap-5 pb-16">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
                 <Sparkles className="h-6 w-6" />
@@ -564,8 +574,8 @@ export function PlaygroundPageContent() {
                 e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Send a message…"
-              disabled={streaming}
+              placeholder={config.mode === 'pipeline' && !config.pipeline_id ? 'Select a pipeline to start chatting…' : 'Send a message…'}
+              disabled={streaming || (config.mode === 'pipeline' && !config.pipeline_id)}
               rows={1}
               className="flex-1 resize-none bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 max-h-50 outline-none overflow-y-auto"
             />
@@ -580,7 +590,7 @@ export function PlaygroundPageContent() {
             ) : (
               <button
                 onClick={() => sendMessage()}
-                disabled={!input.trim() || isSystemPromptError}
+                disabled={!input.trim() || isSystemPromptError || (config.mode === 'pipeline' && !config.pipeline_id)}
                 title="Send (Enter)"
                 className="shrink-0 h-8 w-8 rounded-full bg-zinc-100 hover:bg-white flex items-center justify-center transition-colors disabled:bg-zinc-700 disabled:cursor-not-allowed"
               >
