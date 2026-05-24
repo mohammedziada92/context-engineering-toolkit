@@ -94,7 +94,7 @@ async def create_pipeline(user_id: str, body) -> dict:
             "description":    getattr(body, "description", None),
             "canvas_state":   getattr(body, "canvas_state", {}) or {},
             "pipeline_config":getattr(body, "pipeline_config", {}) or {},
-            "is_active":      False,
+            "is_active":      True,
         })
         .execute()
     )

@@ -56,9 +56,10 @@ export function PipelineModeToggle({ mode, pipelineId, onModeChange, onPipelineC
           >
             <option value="" disabled>Select a pipeline…</option>
             {activePipelines.map((p) => {
-              const model = typeof (p.pipeline_config as Record<string, unknown>)?.model === 'string' ? ((p.pipeline_config as Record<string, string>).model).split('/').pop() : 'unknown'
+              const model = typeof (p.pipeline_config as Record<string, unknown>)?.model === 'string' ? ((p.pipeline_config as Record<string, string>).model).split('/').pop() : ''
               const nodes = (p.canvas_state as { nodes?: unknown[] })?.nodes?.length ?? '?'
-              return <option key={p.id} value={p.id}>{p.name} ({model} · {nodes} nodes)</option>
+              const suffix = model ? `${model} · ${nodes} nodes` : `${nodes} nodes`
+              return <option key={p.id} value={p.id}>{p.name} ({suffix})</option>
             })}
           </select>
 
