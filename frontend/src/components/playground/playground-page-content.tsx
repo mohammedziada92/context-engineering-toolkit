@@ -13,6 +13,7 @@ import {
   type Session,
   exportAsMarkdown,
 } from '@/lib/api/playground'
+import { getPipeline, type Pipeline } from '@/lib/api/pipelines'
 import { PipelineModeToggle } from './PipelineModeToggle'
 import { ThinkingLoader } from './ThinkingLoader'
 import { KBAttachmentPanel } from './KBAttachmentPanel'
@@ -93,6 +94,17 @@ function relativeTime(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+// ── Parse pipeline canvas nodes into keyed categories ──────
+function parseCanvasNodes(pipeline: Pipeline) {
+  const nodes = (pipeline.canvas_state as { nodes?: { type: string; data?: Record<string, unknown> }[] })?.nodes ?? []
+  const parsed: Record<string, Record<string, unknown>> = {}
+  for (const n of nodes) {
+    const cat = n.type === 'vectorSearch' ? 'rag' : n.type === 'systemPrompt' ? 'system_prompt' : n.type === 'knowledgeSource' ? 'knowledge_source' : n.type === 'chatHistory' ? 'chat_history' : n.type
+    if (cat) parsed[cat] = n.data ?? {}
+  }
+  return parsed
+}
+
 // ── Component ────────────────────────────────────────────────
 export function PlaygroundPageContent() {
   const qc = useQueryClient()
@@ -115,6 +127,14 @@ export function PlaygroundPageContent() {
     queryKey: ['playground-sessions'],
     queryFn: () => import('@/lib/api/playground').then((m) => m.listSessions()),
     staleTime: 30_000,
+  })
+
+  // Fetch selected pipeline details for read-only Settings summary
+  const { data: selectedPipeline } = useQuery<Pipeline>({
+    queryKey: ['pipeline', config.pipeline_id],
+    queryFn: () => getPipeline(config.pipeline_id!),
+    enabled: config.mode === 'pipeline' && !!config.pipeline_id,
+    staleTime: 60_000,
   })
 
   useEffect(() => {
@@ -614,118 +634,178 @@ export function PlaygroundPageContent() {
 
         <div className="flex-1 overflow-y-auto p-4 space-y-5 [scrollbar-gutter:stable]">
 
-          {/* Model Selector — direct mode only */}
-          {config.mode === 'direct' && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-zinc-400">Model</Label>
-              <ModelSelector
-                value={config.model}
-                onChange={(model) => patchConfig({ model })}
-              />
-            </div>
+          {/* ── Pipeline mode: no pipeline selected ── */}
+          {config.mode === 'pipeline' && !config.pipeline_id && (
+            <p className="text-xs text-zinc-500 text-center pt-8">
+              Select a pipeline to see its configuration.
+            </p>
           )}
 
-          {/* System Prompt — direct mode only */}
-          {config.mode === 'direct' && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium text-zinc-400">System Prompt</Label>
-                <span className={cn(
-                  'text-xs tabular-nums',
-                  systemPromptTokens > 3500 ? (isSystemPromptError ? 'text-red-400' : 'text-amber-400') : 'text-zinc-500'
-                )}>
-                  {systemPromptTokens.toLocaleString()} / 4,000
-                </span>
-              </div>
-              <Textarea
-                value={config.system_prompt}
-                onChange={(e) => patchConfig({ system_prompt: e.target.value })}
-                placeholder="You are a helpful assistant."
-                className="min-h-25 max-h-50 resize-none bg-zinc-800 border-zinc-700 text-zinc-200 text-sm font-mono placeholder:text-zinc-500 focus:border-violet-500"
-              />
-              {systemPromptTokens > 3500 && !isSystemPromptError && (
-                <p className="text-xs text-amber-400">Approaching limit</p>
-              )}
-              {isSystemPromptError && (
-                <p className="text-xs text-red-400">System prompt too long.</p>
-              )}
-            </div>
-          )}
+          {/* ── Pipeline mode: read-only summary ── */}
+          {config.mode === 'pipeline' && config.pipeline_id && (() => {
+            const pNodes = selectedPipeline ? parseCanvasNodes(selectedPipeline) : {}
+            const llm = pNodes.llm as Record<string, unknown> | undefined
+            const rag = pNodes.rag as Record<string, unknown> | undefined
+            const sp = pNodes.system_prompt as Record<string, unknown> | undefined
+            const canvasNodes = (selectedPipeline?.canvas_state as { nodes?: unknown[] })?.nodes ?? []
+            const model = (llm?.model as string ?? selectedPipeline?.model ?? '').split('/').pop() || 'Unknown'
+            const kbConnected = !!(rag?.knowledge_source_id)
+            const spContent = (sp?.content as string) ?? ''
+            return (
+              <div className="space-y-4">
+                {/* Model */}
+                <div className="space-y-1">
+                  <span className="text-xs text-zinc-500">Model</span>
+                  <p className="text-sm text-zinc-200">{model}</p>
+                </div>
 
-          {/* Collapsible Parameters */}
-          {config.mode === 'direct' && (
-            <div>
-              <button
-                onClick={() => setParamsOpen((o) => !o)}
-                className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors w-full"
-              >
-                {paramsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                Parameters
-              </button>
+                {/* Knowledge Base */}
+                <div className="space-y-1">
+                  <span className="text-xs text-zinc-500">Knowledge Base</span>
+                  <p className={cn('text-sm', kbConnected ? 'text-zinc-200' : 'text-amber-400')}>
+                    {kbConnected ? 'Connected' : 'Not connected'}
+                  </p>
+                </div>
 
-              {paramsOpen && (
-                <div className="mt-3 space-y-3">
-                  {/* Temperature */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs text-zinc-500">Temperature</Label>
-                      <span className="text-xs text-zinc-300 tabular-nums">{config.temperature.toFixed(1)}</span>
-                    </div>
-                    <Slider
-                      min={0} max={1} step={0.1}
-                      value={[config.temperature]}
-                      onValueChange={(v) => patchConfig({ temperature: typeof v === 'number' ? v : (v as number[])[0] })}
-                      className="**:[[role=slider]]:bg-violet-500"
-                    />
-                  </div>
+                {/* System Prompt */}
+                <div className="space-y-1">
+                  <span className="text-xs text-zinc-500">System Prompt</span>
+                  <p className="text-xs text-zinc-400 leading-relaxed line-clamp-4">
+                    {spContent
+                      ? spContent.length > 120 ? spContent.slice(0, 120) + '…' : spContent
+                      : 'Not configured'}
+                  </p>
+                </div>
 
-                  {/* Max Tokens */}
-                  <div className="space-y-1">
-                    <Label className="text-xs text-zinc-500">Max Tokens</Label>
-                    <input
-                      type="number"
-                      min={1} max={8192}
-                      value={config.max_tokens}
-                      onChange={(e) => patchConfig({ max_tokens: Number(e.target.value) })}
-                      className="w-full h-7 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 text-xs text-zinc-200 tabular-nums focus:outline-none focus:border-violet-500"
-                    />
-                  </div>
-
-                  {/* Top P */}
-                  <div className="space-y-1">
-                    <Label className="text-xs text-zinc-500">Top P</Label>
-                    <input
-                      type="number"
-                      min={0} max={1} step={0.1}
-                      value={config.top_p}
-                      onChange={(e) => patchConfig({ top_p: Number(e.target.value) })}
-                      className="w-full h-7 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 text-xs text-zinc-200 tabular-nums focus:outline-none focus:border-violet-500"
-                    />
-                  </div>
-
-                  {/* Stream Toggle */}
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs text-zinc-500">Streaming</Label>
-                    <Switch
-                      checked={config.stream}
-                      onCheckedChange={(stream) => patchConfig({ stream })}
-                    />
+                {/* Nodes count + link */}
+                <div className="space-y-1">
+                  <span className="text-xs text-zinc-500">Nodes</span>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-zinc-200">{canvasNodes.length} nodes</p>
+                    <Link
+                      href={`/pipelines/${config.pipeline_id}`}
+                      className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                      target="_blank"
+                    >
+                      View Canvas <ExternalLink className="h-3 w-3" />
+                    </Link>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
 
-          {/* KB Attachment — both modes */}
-          <KBAttachmentPanel
-            knowledgeSourceId={config.knowledge_source_id}
-            topK={config.top_k}
-            threshold={config.threshold}
-            disabled={config.mode === 'direct'}
-            onKBChange={(knowledge_source_id) => patchConfig({ knowledge_source_id })}
-            onTopKChange={(top_k) => patchConfig({ top_k })}
-            onThresholdChange={(threshold) => patchConfig({ threshold })}
-          />
+                {/* Divider + note */}
+                <div className="border-t border-zinc-800 pt-3">
+                  <p className="text-[11px] text-zinc-500">
+                    Configuration is managed on the Pipeline Canvas.
+                  </p>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* ── Direct mode: interactive controls ── */}
+          {config.mode === 'direct' && (
+            <>
+              {/* Model Selector */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-zinc-400">Model</Label>
+                <ModelSelector
+                  value={config.model}
+                  onChange={(model) => patchConfig({ model })}
+                />
+              </div>
+
+              {/* System Prompt */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-zinc-400">System Prompt</Label>
+                  <span className={cn(
+                    'text-xs tabular-nums',
+                    systemPromptTokens > 3500 ? (isSystemPromptError ? 'text-red-400' : 'text-amber-400') : 'text-zinc-500'
+                  )}>
+                    {systemPromptTokens.toLocaleString()} / 4,000
+                  </span>
+                </div>
+                <Textarea
+                  value={config.system_prompt}
+                  onChange={(e) => patchConfig({ system_prompt: e.target.value })}
+                  placeholder="You are a helpful assistant."
+                  className="min-h-25 max-h-50 resize-none bg-zinc-800 border-zinc-700 text-zinc-200 text-sm font-mono placeholder:text-zinc-500 focus:border-violet-500"
+                />
+                {systemPromptTokens > 3500 && !isSystemPromptError && (
+                  <p className="text-xs text-amber-400">Approaching limit</p>
+                )}
+                {isSystemPromptError && (
+                  <p className="text-xs text-red-400">System prompt too long.</p>
+                )}
+              </div>
+
+              {/* Collapsible Parameters */}
+              <div>
+                <button
+                  onClick={() => setParamsOpen((o) => !o)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors w-full"
+                >
+                  {paramsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  Parameters
+                </button>
+
+                {paramsOpen && (
+                  <div className="mt-3 space-y-3">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs text-zinc-500">Temperature</Label>
+                        <span className="text-xs text-zinc-300 tabular-nums">{config.temperature.toFixed(1)}</span>
+                      </div>
+                      <Slider
+                        min={0} max={1} step={0.1}
+                        value={[config.temperature]}
+                        onValueChange={(v) => patchConfig({ temperature: typeof v === 'number' ? v : (v as number[])[0] })}
+                        className="**:[[role=slider]]:bg-violet-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-zinc-500">Max Tokens</Label>
+                      <input
+                        type="number"
+                        min={1} max={8192}
+                        value={config.max_tokens}
+                        onChange={(e) => patchConfig({ max_tokens: Number(e.target.value) })}
+                        className="w-full h-7 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 text-xs text-zinc-200 tabular-nums focus:outline-none focus:border-violet-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-zinc-500">Top P</Label>
+                      <input
+                        type="number"
+                        min={0} max={1} step={0.1}
+                        value={config.top_p}
+                        onChange={(e) => patchConfig({ top_p: Number(e.target.value) })}
+                        className="w-full h-7 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 text-xs text-zinc-200 tabular-nums focus:outline-none focus:border-violet-500"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-zinc-500">Streaming</Label>
+                      <Switch
+                        checked={config.stream}
+                        onCheckedChange={(stream) => patchConfig({ stream })}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* KB Attachment — direct mode only */}
+              <KBAttachmentPanel
+                knowledgeSourceId={config.knowledge_source_id}
+                topK={config.top_k}
+                threshold={config.threshold}
+                disabled={false}
+                onKBChange={(knowledge_source_id) => patchConfig({ knowledge_source_id })}
+                onTopKChange={(top_k) => patchConfig({ top_k })}
+                onThresholdChange={(threshold) => patchConfig({ threshold })}
+              />
+            </>
+          )}
         </div>
 
         {/* Pinned footer — always visible */}
