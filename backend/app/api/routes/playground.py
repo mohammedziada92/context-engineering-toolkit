@@ -118,14 +118,14 @@ async def run_playground(
         latency_ms = int((time.perf_counter() - start_time) * 1000)
         total_tokens = prompt_tokens + completion_tokens
         cost_usd = token_service.estimate_cost(
-            prompt_tokens, completion_tokens, body.model
+            prompt_tokens, completion_tokens, effective_model
         )
 
         await _log_playground_run(
             user_id=user_id,
             user_message=_last_user_content(body.messages),
             llm_response=llm_response_text,
-            model_used=body.model,
+            model_used=effective_model,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             total_tokens=total_tokens,
@@ -136,7 +136,7 @@ async def run_playground(
 
         logger.info(
             "Playground run complete: model={}, tokens={}, cost=${:.4f}, latency={}ms",
-            body.model,
+            effective_model,
             total_tokens,
             cost_usd,
             latency_ms,
@@ -540,14 +540,14 @@ async def chat_stream(
         latency_ms = int((time.perf_counter() - start_time) * 1000)
         total_tokens = prompt_tokens + completion_tokens
         cost_usd = token_service.estimate_cost(
-            prompt_tokens, completion_tokens, body.model
+            prompt_tokens, completion_tokens, effective_model
         )
 
         await _log_playground_run(
             user_id=user_id,
             user_message=body.message,
             llm_response=llm_response_text,
-            model_used=body.model,
+            model_used=effective_model,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             total_tokens=total_tokens,
