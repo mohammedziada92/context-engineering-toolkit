@@ -11,7 +11,7 @@ export default function LoginPage() {
         <img
           src="https://www.image2url.com/r2/default/images/1779700536639-9eb5805b-6cd7-4c89-bec8-f67cbb4f8906.png"
           alt="CET"
-          className="max-w-xs w-auto"
+          className="max-w-md w-auto px-8"
         />
       </div>
 
