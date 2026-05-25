@@ -5,35 +5,51 @@ export default function LandingPage() {
     <div className="min-h-dvh flex flex-col bg-zinc-950 text-zinc-100">
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
-        <span className="text-lg font-semibold tracking-tight">
-          <span className="text-primary">CET</span>
-        </span>
-        <Link
-          href="/login"
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          Sign In
+        <Link href="/" className="shrink-0">
+          <img
+            src="https://drive.google.com/uc?export=view&id=1IOVW10GGZTht1tyXmsUOAK-C1QzYPIy8"
+            alt="CET"
+            height={32}
+            className="h-8 w-auto"
+          />
         </Link>
+        <div className="flex items-center gap-6">
+          <a href="#" className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors">
+            Docs
+          </a>
+          <a
+            href="https://github.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            GitHub
+          </a>
+          <Link
+            href="/login"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Sign In
+          </Link>
+        </div>
       </nav>
 
       {/* Hero */}
       <main className="flex-1 flex items-center justify-center px-6">
         <div className="max-w-2xl text-center space-y-6">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
-            Context Engineering
-            <span className="text-primary"> Toolkit</span>
+            The Postman for{' '}
+            <span className="text-primary">LLM Context</span>
           </h1>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Build, test, and optimize context windows for LLM-powered
-            applications. Manage pipelines, ingest knowledge sources, and
-            analyze performance — all in one place.
+            Build, test, and optimize RAG pipelines visually. No prompt guessing. No black boxes.
           </p>
           <div className="flex items-center justify-center gap-4 pt-2">
             <Link
               href="/login"
               className="rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-              Get Started
+              Start Building Free
             </Link>
             <a
               href="https://github.com"
