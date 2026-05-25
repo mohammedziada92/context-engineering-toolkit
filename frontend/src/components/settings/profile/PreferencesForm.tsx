@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { updatePreferences, UserPreferences } from '@/lib/api/settings'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 const TIMEZONES = ['Asia/Riyadh', 'UTC', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo']
 const DATE_FORMATS = [
@@ -63,11 +64,35 @@ export function PreferencesForm({ preferences }: Props) {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-zinc-400">Theme</Label>
-            <select {...register('theme')} className={selectClass}>
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="system">System</option>
-            </select>
+            <div className="space-y-1.5">
+              {([
+                { value: 'dark', label: 'Dark', disabled: false },
+                { value: 'light', label: 'Light', disabled: true },
+                { value: 'system', label: 'System', disabled: true },
+              ] as const).map((opt) => (
+                <label
+                  key={opt.value}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm cursor-pointer transition-colors',
+                    opt.disabled
+                      ? 'border-zinc-800 bg-zinc-900 text-zinc-600 cursor-not-allowed'
+                      : 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:border-zinc-600'
+                  )}
+                >
+                  <input
+                    type="radio"
+                    value={opt.value}
+                    {...register('theme')}
+                    disabled={opt.disabled}
+                    className="accent-violet-500"
+                  />
+                  {opt.label}
+                  {opt.disabled && (
+                    <span className="ml-auto text-[10px] font-medium text-zinc-600 bg-zinc-800 rounded px-1.5 py-0.5">v2</span>
+                  )}
+                </label>
+              ))}
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-zinc-400">Timezone</Label>
