@@ -33,15 +33,16 @@ export function PreferencesForm({ preferences }: Props) {
     }
   }, [preferences, reset, setTheme])
 
-  // Instant theme preview on dropdown change (before save)
+  // Instant theme preview + auto-save on dropdown change
   useEffect(() => {
     const subscription = watch((formValues, { name }) => {
       if (name === 'theme' && formValues.theme) {
         setTheme(formValues.theme)
+        mutate({ theme: formValues.theme } as UserPreferences)
       }
     })
     return () => subscription.unsubscribe()
-  }, [watch, setTheme])
+  }, [watch, setTheme, mutate])
 
   const { mutate, isPending } = useMutation({
     mutationFn: updatePreferences,
