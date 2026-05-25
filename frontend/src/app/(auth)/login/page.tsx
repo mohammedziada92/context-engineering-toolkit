@@ -6,19 +6,20 @@ export const metadata: Metadata = { title: 'Sign In — CET' }
 export default function LoginPage() {
   return (
     <div className="min-h-dvh grid grid-cols-1 md:grid-cols-[55fr_45fr]">
-      {/* Left — Full-height image panel (hidden on mobile) */}
-      <div className="hidden md:block relative bg-zinc-950">
+      {/* Left — CET brand panel (hidden on mobile) */}
+      <div className="hidden md:flex flex-col items-center justify-center bg-zinc-950 relative overflow-hidden">
+        {/* Subtle radial glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(139,92,246,0.08)_0%,_transparent_70%)]" />
+        {/* Logo */}
         <img
-          src="https://www.image2url.com/r2/default/images/1779701783083-b4c00c71-473c-4bf8-a7c8-5068a4e06d3c.png"
+          src="/assets/login-panel.png"
           alt="CET"
-          className="h-full w-full object-contain"
+          className="max-w-[280px] w-full relative z-10"
         />
-        {/* Bottom gradient overlay */}
-        <div className="absolute inset-x-0 bottom-0 h-2/5 bg-linear-to-t from-black/70 to-transparent" />
-        {/* Text overlay */}
-        <div className="absolute bottom-8 left-8 right-8">
-          <h2 className="text-white font-bold text-2xl mb-1">Welcome to CET</h2>
-          <p className="text-zinc-300 text-sm">Engineer better context. Build smarter LLM pipelines.</p>
+        {/* Tagline */}
+        <div className="mt-6 text-center relative z-10">
+          <h2 className="text-white font-semibold text-lg mb-1">Welcome to CET</h2>
+          <p className="text-zinc-500 text-sm max-w-[260px]">Engineer better context. Build smarter LLM pipelines.</p>
         </div>
       </div>
 
