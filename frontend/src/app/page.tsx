@@ -7,7 +7,7 @@ export default function LandingPage() {
       <nav className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
         <Link href="/" className="shrink-0">
           <img
-            src="https://www.image2url.com/r2/default/images/1779699646698-6595b399-6c5e-4ad2-9721-76d4b694dcc7.png"
+            src="https://www.image2url.com/r2/default/images/1779700203013-7a29c0fa-6f5f-45b5-a83a-532b55c3af23.png"
             alt="CET"
             height={32}
             className="h-8 w-auto"
