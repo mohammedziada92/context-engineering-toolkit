@@ -7,11 +7,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-dvh grid grid-cols-1 md:grid-cols-2">
       {/* Left — CET Logo panel (hidden on mobile) */}
-      <div className="hidden md:flex items-center justify-center bg-zinc-950 border-r border-zinc-800">
+      <div className="hidden md:flex items-center justify-center bg-zinc-950">
         <img
           src="https://www.image2url.com/r2/default/images/1779700536639-9eb5805b-6cd7-4c89-bec8-f67cbb4f8906.png"
           alt="CET"
-          className="max-w-md w-auto px-8"
+          className="h-full w-full object-contain p-10"
         />
       </div>
 
