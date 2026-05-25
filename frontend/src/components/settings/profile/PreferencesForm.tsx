@@ -25,6 +25,15 @@ export function PreferencesForm({ preferences }: Props) {
   const { setTheme } = useTheme()
   const { register, handleSubmit, reset, watch, formState: { isDirty } } = useForm<UserPreferences>()
 
+  const { mutate, isPending } = useMutation({
+    mutationFn: updatePreferences,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['preferences'] })
+      toast.success('Preferences saved')
+    },
+    onError: () => toast.error('Failed to save preferences'),
+  })
+
   // Sync backend preferences → form + theme
   useEffect(() => {
     if (preferences) {
@@ -43,15 +52,6 @@ export function PreferencesForm({ preferences }: Props) {
     })
     return () => subscription.unsubscribe()
   }, [watch, setTheme, mutate])
-
-  const { mutate, isPending } = useMutation({
-    mutationFn: updatePreferences,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['preferences'] })
-      toast.success('Preferences saved')
-    },
-    onError: () => toast.error('Failed to save preferences'),
-  })
 
   const selectClass = 'select-native w-full'
 
