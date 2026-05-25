@@ -7,11 +7,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-dvh grid grid-cols-1 md:grid-cols-[55fr_45fr]">
       {/* Left — Full-height image panel (hidden on mobile) */}
-      <div className="hidden md:block relative">
+      <div className="hidden md:block relative bg-zinc-950">
         <img
           src="https://www.image2url.com/r2/default/images/1779701783083-b4c00c71-473c-4bf8-a7c8-5068a4e06d3c.png"
           alt="CET"
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
         />
         {/* Bottom gradient overlay */}
         <div className="absolute inset-x-0 bottom-0 h-2/5 bg-linear-to-t from-black/70 to-transparent" />
