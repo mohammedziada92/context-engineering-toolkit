@@ -6,21 +6,13 @@ export const metadata: Metadata = { title: 'Sign In — CET' }
 export default function LoginPage() {
   return (
     <div className="min-h-dvh grid grid-cols-1 md:grid-cols-[55fr_45fr]">
-      {/* Left — CET brand panel (hidden on mobile) */}
-      <div className="hidden md:flex flex-col items-center justify-center bg-zinc-950 relative overflow-hidden">
-        {/* Subtle radial glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(139,92,246,0.08)_0%,_transparent_70%)]" />
-        {/* Logo */}
+      {/* Left — Full-bleed image panel (hidden on mobile) */}
+      <div className="hidden md:block relative bg-zinc-950">
         <img
           src="/assets/login-panel.png"
           alt="CET"
-          className="max-w-[280px] w-full relative z-10"
+          className="h-full w-full object-cover"
         />
-        {/* Tagline */}
-        <div className="mt-6 text-center relative z-10">
-          <h2 className="text-white font-semibold text-lg mb-1">Welcome to CET</h2>
-          <p className="text-zinc-500 text-sm max-w-[260px]">Engineer better context. Build smarter LLM pipelines.</p>
-        </div>
       </div>
 
       {/* Right — Login form */}
