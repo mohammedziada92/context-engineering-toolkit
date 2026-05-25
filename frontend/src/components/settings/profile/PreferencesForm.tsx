@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { updatePreferences, UserPreferences } from '@/lib/api/settings'
@@ -21,11 +22,26 @@ interface Props {
 
 export function PreferencesForm({ preferences }: Props) {
   const qc = useQueryClient()
-  const { register, handleSubmit, reset, formState: { isDirty } } = useForm<UserPreferences>()
+  const { setTheme } = useTheme()
+  const { register, handleSubmit, reset, watch, formState: { isDirty } } = useForm<UserPreferences>()
 
+  // Sync backend preferences → form + theme
   useEffect(() => {
-    if (preferences) reset(preferences)
-  }, [preferences, reset])
+    if (preferences) {
+      reset(preferences)
+      if (preferences.theme) setTheme(preferences.theme)
+    }
+  }, [preferences, reset, setTheme])
+
+  // Instant theme preview on dropdown change (before save)
+  useEffect(() => {
+    const subscription = watch((formValues, { name }) => {
+      if (name === 'theme' && formValues.theme) {
+        setTheme(formValues.theme)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [watch, setTheme])
 
   const { mutate, isPending } = useMutation({
     mutationFn: updatePreferences,
