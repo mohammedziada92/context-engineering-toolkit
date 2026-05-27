@@ -1,8 +1,31 @@
 ---
 title: "Models API"
-description: "List available models and query model pricing."
+description: "List supported LLM models and estimate token counts."
 ---
 
 # Models API
 
-Content coming soon.
+Base path: `/api/v1/models`
+
+## GET /api/v1/models
+
+No auth required.
+
+```json
+{
+  "models": [
+    { "id": "anthropic/claude-sonnet-4-6", "provider": "Anthropic", "name": "Claude Sonnet 4.6", "context_window": 1000000, "input_price_per_million": 3.00, "output_price_per_million": 15.00, "role": "quality" },
+    { "id": "z-ai/glm-5", "provider": "Z.ai", "name": "GLM-5", "context_window": null, "input_price_per_million": null, "output_price_per_million": null, "role": "agent" },
+    { "id": "google/gemini-3.1-pro-preview", "provider": "Google", "name": "Gemini 3.1 Pro Preview", "context_window": 1048576, "input_price_per_million": 2.00, "output_price_per_million": 12.00, "role": "budget" }
+  ]
+}
+```
+
+## POST /api/v1/models/token-count
+
+```json
+{ "text": "You are a helpful assistant.", "model": "anthropic/claude-sonnet-4-6" }
+```
+```json
+{ "token_count": 14, "model": "anthropic/claude-sonnet-4-6", "cost_estimate_usd": 0.000042 }
+```

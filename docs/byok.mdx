@@ -1,8 +1,43 @@
 ---
-title: "BYOK"
-description: "Bring your own key — use your own API credits with CET."
+title: "BYOK Model"
+description: "Understanding CET's Bring Your Own Key approach to LLM cost management."
 ---
 
-# BYOK
+# BYOK — Bring Your Own Key
 
-Content coming soon.
+CET does not pay for your LLM usage. This is intentional.
+
+## How It Works
+
+| Step | Who acts |
+|---|---|
+| You enter your OpenRouter key | You |
+| CET validates and encrypts it | CET (Supabase Vault) |
+| Pipeline runs using your key | CET backend (server-side only) |
+| LLM usage billed | OpenRouter → Your account |
+| CET revenue from LLM | $0 |
+
+## Why BYOK?
+
+- **You control costs.** See your usage and credits directly on OpenRouter. No markups.
+- **You choose your model.** Three curated models, each optimized for different use cases.
+- **CET is free.** The toolkit costs nothing. You only pay OpenRouter for tokens consumed.
+
+## Cost Estimates
+
+| Model | ~Prompt tokens | ~Completion tokens | Estimated cost/run |
+|---|---|---|---|
+| Claude Sonnet 4.6 | 500 | 200 | ~$0.005 |
+| Gemini 3.1 Pro Preview | 500 | 200 | ~$0.002 |
+| GLM-5 | 500 | 200 | Included in Z.ai subscription |
+
+## Checking Your Credits
+
+In **Settings → API Keys**, CET shows:
+- **Credits remaining** (pulled from OpenRouter in real time)
+- **Spent this month** broken down by model
+- A **credit bar** that turns amber at 20% remaining and red at 10%
+
+<Warning>
+  If your OpenRouter credits hit $0, all pipeline runs and Playground sessions will be disabled until you top up.
+</Warning>

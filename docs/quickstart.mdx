@@ -1,8 +1,62 @@
 ---
 title: "Quickstart"
-description: "Get CET up and running in under five minutes."
+description: "Build and run your first CET pipeline in under 5 minutes."
 ---
 
 # Quickstart
 
-Content coming soon.
+Get from zero to a running RAG pipeline in 5 steps.
+
+## Prerequisites
+
+- A free [OpenRouter account](https://openrouter.ai) with an API key (`sk-or-v1-...`)
+- A Google or GitHub account for login
+
+## Step 1 — Sign In
+
+Go to [cet.yourdomain.com](https://cet.yourdomain.com) and sign in with Google, GitHub, or email OTP. No password required. After login you'll land on the **Dashboard**.
+
+## Step 2 — Add Your OpenRouter Key
+
+<Warning>
+  You cannot run any pipeline without a valid OpenRouter API key. CET uses BYOK — your key, your credits.
+</Warning>
+
+1. Go to **Settings → API Keys**
+2. Paste your OpenRouter key (`sk-or-v1-...`)
+3. Click **Validate Key** — CET checks it's active and shows your credit balance
+4. Click **Save Key**
+5. Select your **default model** (Claude Sonnet 4.6 recommended to start)
+
+## Step 3 — Upload a Knowledge Source
+
+1. Go to **Knowledge Base** in the sidebar
+2. Click **Add Source**
+3. Upload a PDF, paste a URL, or type text directly
+4. Wait for the status badge to turn **Ready** (under 60 seconds for a 10MB PDF)
+
+CET automatically chunks your document, generates 1024-dimensional embeddings using `multilingual-e5-large`, and stores them in pgvector.
+
+## Step 4 — Build a Pipeline
+
+1. Go to **Pipelines → New Pipeline**
+2. Drag these nodes from the left panel onto the canvas:
+   - **System Prompt** node — write your instructions
+   - **RAG** node — select your knowledge source, set Top K = 5
+   - **LLM** node — select your model
+   - **Output** node
+3. Connect them left to right
+4. Watch the **Token Budget Bar** update in real time
+5. Click **Save**
+
+## Step 5 — Run in the Playground
+
+1. Go to **Playground** in the sidebar
+2. Select your pipeline from the dropdown
+3. Type a query and press **Enter**
+4. Watch the response stream in real time
+5. Check token usage, cost, and latency below each response
+
+<Check>
+  You've built and run your first CET pipeline. Head to **Analytics** to see your run history.
+</Check>

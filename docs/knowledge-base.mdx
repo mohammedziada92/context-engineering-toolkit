@@ -1,8 +1,52 @@
 ---
 title: "Knowledge Base"
-description: "Upload, chunk, and embed documents for retrieval."
+description: "Upload documents and URLs to build a searchable knowledge base for your RAG pipelines."
 ---
 
 # Knowledge Base
 
-Content coming soon.
+The CET Knowledge Base is a document store backed by **pgvector**. Upload documents, CET processes them into vector embeddings, and your RAG pipeline nodes retrieve the most relevant chunks at query time.
+
+## Supported Input Types
+
+| Type | Format | Max Size |
+|---|---|---|
+| PDF | `.pdf` | 50 MB |
+| Plain text | `.txt` | 10 MB |
+| URL | Any public URL | — |
+| Direct paste | Text input | — |
+
+## Processing Pipeline
+
+1. **Extract** — PyMuPDF for PDFs, BeautifulSoup4 for URLs
+2. **Clean** — normalize whitespace, remove boilerplate
+3. **Chunk** — configurable size and overlap (default: 512 tokens, 50 overlap)
+4. **Embed** — `multilingual-e5-large`, 1024-dimensional vectors
+5. **Store** — saved in pgvector `chunks` table
+6. **Update status** → `ready`
+
+## Source Statuses
+
+| Status | Meaning |
+|---|---|
+| `pending` | Queued, not started |
+| `processing` | Actively chunking and embedding |
+| `ready` | Complete — available for pipelines |
+| `error` | Failed — retry button available |
+
+## Re-chunking a Source
+
+On the **Source Detail** page, click **Re-chunk** to delete all existing chunks and re-process with new settings (chunk size, overlap, strategy).
+
+<Warning>
+  Re-chunking deletes all existing embeddings. Pipelines using this source will use the new chunks on their next run.
+</Warning>
+
+## Test Retrieval
+
+On the Source Detail page, use **Test Retrieval** to run a semantic search before connecting to a pipeline.
+
+Score color coding:
+- 🟢 ≥ 0.90 — Excellent match
+- 🔵 0.75–0.89 — Good match
+- 🟡 0.70–0.74 — Marginal

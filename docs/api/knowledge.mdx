@@ -1,8 +1,42 @@
 ---
-title: "Knowledge API"
-description: "Manage knowledge sources, chunks, and embeddings."
+title: "Knowledge Base API"
+description: "Upload and manage knowledge sources for RAG pipelines."
 ---
 
-# Knowledge API
+# Knowledge Base API
 
-Content coming soon.
+Base path: `/api/v1/knowledge` · Requires `Authorization: Bearer <jwt>`
+
+## GET /api/v1/knowledge
+Returns all knowledge sources for the authenticated user.
+
+## POST /api/v1/knowledge
+
+Rate limit: 5 req/min
+
+```http
+Content-Type: multipart/form-data
+file: <binary>  # .pdf or .txt, max 50MB
+name: "Refund Policy"
+type: "pdf"     # pdf | txt | url
+```
+
+**Response 202:** `{ "id": "uuid", "status": "processing", "message": "File received. Chunking and embedding in progress." }`
+
+Poll `GET /api/v1/knowledge/:id` every 3 seconds until `status === "ready"`.
+
+## GET /api/v1/knowledge/:id
+
+```json
+{
+  "id": "uuid", "name": "Refund Policy PDF", "type": "pdf",
+  "status": "ready", "chunk_count": 42,
+  "chunks": [{ "id": "uuid", "content": "...", "chunk_index": 0, "token_count": 64 }]
+}
+```
+
+## DELETE /api/v1/knowledge/:id
+
+<Warning>Deletes the source and all associated chunks from pgvector. Irreversible.</Warning>
+
+**Response 200:** `{ "success": true, "message": "Knowledge source and chunks deleted" }`

@@ -1,8 +1,54 @@
 ---
 title: "Authentication"
-description: "Authenticate API requests with JWT tokens."
+description: "CET authentication is handled by Supabase Auth. All API endpoints require a valid JWT."
 ---
 
 # Authentication
 
-Content coming soon.
+CET uses **Supabase Auth**. All API calls require this header:
+
+```http
+Authorization: Bearer <supabase-jwt-token>
+Content-Type: application/json
+```
+
+## Auth Methods
+
+| Method | Flow |
+|---|---|
+| Google OAuth | `supabase.auth.signInWithOAuth({ provider: 'google' })` |
+| GitHub OAuth | `supabase.auth.signInWithOAuth({ provider: 'github' })` |
+| Email OTP | `supabase.auth.signInWithOtp({ email })` then verify 6-digit code |
+
+## JWT Verification (FastAPI)
+
+```python
+from jose import jwt, JWTError
+
+async def verify_jwt(token: str) -> dict:
+    payload = jwt.decode(
+        token.credentials,
+        SUPABASE_JWT_SECRET,
+        algorithms=["HS256"],
+        audience="authenticated"  # Must match
+    )
+    return payload
+```
+
+## OAuth Callback
+
+```typescript
+// app/auth/callback/route.ts
+export async function GET(request: Request) {
+  const code = new URL(request.url).searchParams.get('code')
+  if (code) await supabase.auth.exchangeCodeForSession(code)
+  return NextResponse.redirect(new URL('/dashboard', request.url))
+}
+```
+
+## Error Codes
+
+| HTTP | Code | Meaning |
+|---|---|---|
+| `401` | `UNAUTHORIZED` | Missing or invalid JWT |
+| `403` | `FORBIDDEN` | Valid JWT but no access to resource |

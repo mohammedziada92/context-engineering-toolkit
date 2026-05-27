@@ -1,8 +1,70 @@
 ---
 title: "Pipelines"
-description: "Build RAG pipelines visually with the drag-and-drop canvas."
+description: "The visual pipeline canvas is the core of CET. Learn how to build, configure, and run pipelines."
 ---
 
 # Pipelines
 
-Content coming soon.
+A **pipeline** in CET is a visual graph of nodes that defines how context is assembled and sent to an LLM. Each node handles one piece of the context window.
+
+## Node Types
+
+| Node | Purpose | Key config |
+|---|---|---|
+| **System Prompt** | Static instructions to the LLM | Prompt text, max token allocation |
+| **RAG** | Retrieves relevant chunks from your knowledge base | Knowledge source, Top K, similarity threshold, max tokens |
+| **Chat History** | Injects previous conversation turns | Strategy (keep / summarize / truncate), max tokens |
+| **LLM** | Selects the model and generation params | Model, temperature, max output tokens |
+| **Output** | Final context preview before the LLM call | — |
+
+## Token Budget Bar
+
+Always visible at the top of the canvas. Color-coded breakdown:
+
+- 🔵 **Blue** — System Prompt
+- 🟢 **Green** — RAG chunks
+- 🟡 **Yellow** — Chat History
+- 🔴 **Red** — Over budget
+
+`Total Budget = Model Context Window − Max Output Tokens`
+
+## Pipeline Execution Steps
+
+When you run a pipeline, CET:
+
+1. Loads the pipeline config from Supabase
+2. Runs vector search (pgvector) for the RAG node
+3. Compresses / truncates chat history per strategy
+4. Allocates the token budget per block
+5. Deduplicates and relevance-filters retrieved chunks
+6. Builds the final `messages` array
+7. Calls the LLM via LiteLLM (SSE stream)
+8. Logs the run — tokens, cost, latency — to `pipeline_runs`
+
+## Pipeline Config JSON
+
+```json
+{
+  "pipeline_id": "uuid",
+  "nodes": [
+    { "id": "node-1", "type": "system_prompt", "data": { "content": "You are a helpful assistant.", "max_tokens": 500 }},
+    { "id": "node-2", "type": "rag", "data": { "knowledge_source_id": "uuid", "top_k": 5, "similarity_threshold": 0.75, "max_tokens": 1500 }},
+    { "id": "node-3", "type": "chat_history", "data": { "strategy": "summarize", "max_tokens": 500 }},
+    { "id": "node-4", "type": "llm", "data": { "model": "anthropic/claude-sonnet-4-6", "temperature": 0.7, "max_tokens": 2048 }},
+    { "id": "node-5", "type": "output", "data": {}}
+  ],
+  "edges": [
+    { "source": "node-1", "target": "node-4" },
+    { "source": "node-2", "target": "node-4" },
+    { "source": "node-3", "target": "node-4" },
+    { "source": "node-4", "target": "node-5" }
+  ]
+}
+```
+
+## Saving & Versioning
+
+- **Save** creates a new immutable version — never overwrites
+- View version history from the pipeline toolbar
+- **Export** pipeline config as JSON
+- **Duplicate** to branch off a new experiment

@@ -1,8 +1,55 @@
 ---
 title: "Token Budgeting"
-description: "Track token usage and cost per message across models."
+description: "How CET allocates the context window budget across pipeline nodes."
 ---
 
 # Token Budgeting
 
-Content coming soon.
+CET's **Token Budget Allocator** ensures your pipeline never silently overflows the model's context limit.
+
+## Budget Formula
+
+| Model | Context Window | Max Output | Available Budget |
+|---|---|---|---|
+| Claude Sonnet 4.6 | 1,000,000 | 2,048 | **997,952** |
+| Gemini 3.1 Pro Preview | 1,048,576 | 2,048 | **1,046,528** |
+
+## Default Allocation Per Node
+
+| Node | Default |
+|---|---|
+| System Prompt | 500 tokens |
+| RAG Chunks | 1,500 tokens |
+| Chat History | 500 tokens |
+| User Message | Remaining budget |
+
+You can override the max token allocation on each node's config panel.
+
+## Model-Aware Auto Budget
+
+The Chat History node supports **Auto Budget mode** — it automatically calculates its allocation as a percentage of the selected model's context window. Switching models recalculates instantly.
+
+```python
+AUTO_RATIO = 0.046  # 4.6% of context window
+
+def resolve_history_budget(model_id: str, mode: str, manual_budget: int) -> int:
+    if mode == "auto":
+        ctx = MODEL_CONTEXT_WINDOWS.get(model_id, 32_768)
+        return round(ctx * AUTO_RATIO / 100) * 100
+    return manual_budget
+```
+
+## Over-Budget Warning
+
+If total allocated tokens exceed the model's context window, the Token Budget Bar turns **red** and CET blocks the pipeline run until the conflict is resolved.
+
+## Token Budget Bar
+
+The bar at the top of the canvas gives a live visual breakdown:
+
+- 🔵 **Blue** — System Prompt
+- 🟢 **Green** — RAG chunks
+- 🟡 **Yellow** — Chat History
+- 🔴 **Red** — Over budget
+
+Updates in real time as you add, remove, or reconfigure nodes.

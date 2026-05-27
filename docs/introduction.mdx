@@ -1,8 +1,58 @@
 ---
 title: "Introduction"
-description: "What is the Context Engineering Toolkit and why it matters."
+description: "CET is the Postman for LLM context — a visual toolkit for building, testing, and optimizing RAG pipelines."
 ---
 
-# Introduction
+# What is CET?
 
-Content coming soon.
+The **Context Engineering Toolkit (CET)** is a full-stack developer tool that gives you a visual interface to design, test, and analyze LLM context pipelines. Instead of hand-coding context management logic and guessing why your AI gives wrong answers, CET lets you see exactly what enters the model's context window — and measure the impact of every decision in real time.
+
+## The Problem CET Solves
+
+Every developer building LLM-powered applications faces the same invisible crisis:
+
+> *"My AI gives wrong answers in production — but I have no idea what it's actually seeing."*
+
+| Problem | Without CET | With CET |
+|---|---|---|
+| **Blind context assembly** | Hand-code injection, guess what fits | Visual canvas shows every token |
+| **Silent RAG failures** | Hours of log parsing | Real-time relevance scores |
+| **Zero cost visibility** | Monthly bill, no breakdown | Per-pipeline token & cost analytics |
+| **No context versioning** | Hardcoded prompts in repos | Versioned pipeline configs |
+
+## Who CET Is For
+
+- **Backend engineers** debugging broken RAG chatbots
+- **Solo AI developers** who re-code context management for every new project
+- **ML engineers** looking to reduce LLM API costs by 40%+
+
+## How It Works
+
+<Steps>
+  <Step title="Connect your OpenRouter key">
+    CET uses a BYOK (Bring Your Own Key) model. You supply your OpenRouter API key — CET stores it encrypted and routes all LLM calls through it. You pay OpenRouter directly. CET is free.
+  </Step>
+  <Step title="Build your pipeline on the canvas">
+    Drag and drop nodes onto the visual pipeline canvas — System Prompt, RAG, Chat History, LLM, and Output nodes. Connect them to define execution order.
+  </Step>
+  <Step title="Run and iterate in the Playground">
+    Send queries, see streamed responses, and inspect token usage, cost, and latency per run. Adjust your pipeline and re-run instantly.
+  </Step>
+</Steps>
+
+## Tech Stack
+
+- **Frontend:** Next.js 15, TypeScript, Tailwind CSS v4, Shadcn/ui, React Flow
+- **Backend:** FastAPI (Python), Pydantic v2, LiteLLM
+- **Database:** Supabase (PostgreSQL 15 + pgvector)
+- **AI Layer:** LiteLLM proxy routing to Claude, GLM-5, and Gemini via OpenRouter
+- **Infrastructure:** Docker (local), Vercel + Railway (production)
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/docs/quickstart">
+    Build your first pipeline in 5 minutes
+  </Card>
+  <Card title="Connect OpenRouter" icon="key" href="/docs/connect-openrouter">
+    Set up your BYOK API key
+  </Card>
+</CardGroup>

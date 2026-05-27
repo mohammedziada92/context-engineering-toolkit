@@ -1,8 +1,50 @@
 ---
 title: "Pipelines API"
-description: "Create, read, update, and delete RAG pipelines."
+description: "Create, read, update, delete, and execute CET pipelines."
 ---
 
 # Pipelines API
 
-Content coming soon.
+Base path: `/api/v1/pipelines` · Requires `Authorization: Bearer <jwt>`
+
+## GET /api/v1/pipelines
+Returns all pipelines for the authenticated user.
+
+## POST /api/v1/pipelines
+```json
+{ "name": "My RAG Pipeline", "description": "...", "canvas_data": { "nodes": [], "edges": [] } }
+```
+**Response 201:** `{ "id": "uuid", "name": "My RAG Pipeline", "created_at": "..." }`
+
+## GET /api/v1/pipelines/:id
+Returns a single pipeline including full canvas state.
+
+## PUT /api/v1/pipelines/:id
+```json
+{ "name": "Updated Name", "canvas_data": { "nodes": [], "edges": [] } }
+```
+**Response 200:** `{ "success": true, "updated_at": "..." }`
+
+## DELETE /api/v1/pipelines/:id
+**Response 200:** `{ "success": true, "message": "Pipeline deleted" }`
+
+## POST /api/v1/pipelines/:id/run
+
+Rate limit: 20 req/min · Returns SSE stream
+
+```json
+{ "user_message": "What is the refund policy?", "session_id": "optional-uuid" }
+```
+
+```json
+{
+  "run_id": "uuid",
+  "llm_response": "Based on our policy...",
+  "model_used": "anthropic/claude-sonnet-4-6",
+  "token_usage": { "prompt_tokens": 512, "completion_tokens": 128, "total_tokens": 640 },
+  "cost_usd": 0.00354,
+  "latency_ms": 1240
+}
+```
+
+**SSE events:** `status: retrieving` → `status: budgeting` → `status: calling_llm` → `token: <chunk>` → `done: <analytics>`

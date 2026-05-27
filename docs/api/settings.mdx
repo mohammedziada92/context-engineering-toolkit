@@ -1,8 +1,57 @@
 ---
-title: "Settings"
-description: "Manage user settings and API key configuration."
+title: "Settings API"
+description: "Manage OpenRouter API key and default LLM model."
 ---
 
-# Settings
+# Settings API
 
-Content coming soon.
+Base path: `/api/v1/settings` · Requires `Authorization: Bearer <jwt>`
+
+## GET /api/v1/settings
+
+```json
+{
+  "user_id": "uuid",
+  "openrouter_api_key": "sk-or-masked",
+  "default_model": "anthropic/claude-sonnet-4-6",
+  "created_at": "2026-03-28T00:00:00Z"
+}
+```
+
+<Note>The API key is always returned masked after the initial save.</Note>
+
+## PUT /api/v1/settings
+
+```json
+{ "openrouter_api_key": "sk-or-v1-xxxx", "default_model": "anthropic/claude-sonnet-4-6" }
+```
+```json
+{ "success": true, "message": "Settings updated successfully" }
+```
+
+## POST /api/v1/settings/validate-key
+
+Rate limit: 10 req/min
+
+```json
+{ "openrouter_api_key": "sk-or-v1-xxxx" }
+```
+
+**Valid:** `{ "valid": true, "credits_remaining": 4.82, "plan": "pay-as-you-go" }`
+
+**Invalid:** `{ "valid": false, "error": "Invalid API key or insufficient credits" }`
+
+## DELETE /api/v1/settings/api-key
+
+```json
+{ "success": true, "message": "API key removed" }
+```
+
+## Error Handling
+
+| Scenario | HTTP | Message |
+|---|---|---|
+| Invalid key format | `400` | Key must start with `sk-or-` |
+| Key fails validation | `200` | `valid: false` |
+| Invalid model ID | `422` | Please select a valid model |
+| No key on pipeline run | `403` | Add your OpenRouter key in Settings first |

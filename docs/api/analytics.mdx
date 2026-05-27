@@ -1,8 +1,62 @@
 ---
 title: "Analytics API"
-description: "Query token usage, costs, and pipeline run metrics."
+description: "Query token usage, cost, and latency analytics for your pipeline runs."
 ---
 
 # Analytics API
 
-Content coming soon.
+Base path: `/api/v1/analytics` · Requires `Authorization: Bearer <jwt>`
+
+## GET /api/v1/analytics/usage
+
+**Query params:** `from`, `to` (ISO 8601 dates), `pipeline_id` (optional)
+
+```json
+{
+  "period": { "from": "2026-03-01", "to": "2026-03-28" },
+  "total_runs": 142,
+  "total_tokens": 284000,
+  "total_cost_usd": 1.24,
+  "avg_latency_ms": 980,
+  "by_model": [
+    { "model": "anthropic/claude-sonnet-4-6", "runs": 98, "tokens": 196000, "cost_usd": 0.98 }
+  ],
+  "by_pipeline": [
+    { "pipeline_id": "uuid", "pipeline_name": "Customer Support", "runs": 100, "cost_usd": 0.90 }
+  ]
+}
+```
+
+## Rate Limits
+
+| Endpoint | Limit |
+|---|---|
+| `POST /pipelines/:id/run` | 20 req/min |
+| `POST /knowledge` | 5 req/min |
+| `POST /settings/validate-key` | 10 req/min |
+| All other endpoints | 60 req/min |
+
+## Health Check
+
+```http
+GET /health
+```
+```json
+{ "status": "ok", "version": "1.0.0", "timestamp": "2026-03-28T00:00:00Z" }
+```
+
+## Error Format
+
+```json
+{ "error": { "code": "UNAUTHORIZED", "message": "Invalid or expired token", "details": null } }
+```
+
+| HTTP | Code | Meaning |
+|---|---|---|
+| `400` | `BAD_REQUEST` | Invalid input |
+| `401` | `UNAUTHORIZED` | Missing or invalid JWT |
+| `403` | `FORBIDDEN` | No access to resource |
+| `404` | `NOT_FOUND` | Resource not found |
+| `422` | `VALIDATION_ERROR` | Schema validation failed |
+| `429` | `RATE_LIMITED` | Too many requests |
+| `500` | `INTERNAL_ERROR` | Server error |

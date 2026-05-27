@@ -1,8 +1,53 @@
 ---
 title: "Connect OpenRouter"
-description: "Link your OpenRouter BYOK key to start using models."
+description: "How to get your OpenRouter API key and add it to CET."
 ---
 
-# Connect OpenRouter
+# Connect Your OpenRouter Key
 
-Content coming soon.
+CET is a **BYOK (Bring Your Own Key)** tool. You supply your OpenRouter API key. All LLM costs are billed by OpenRouter directly — CET charges nothing.
+
+## Get Your OpenRouter Key
+
+1. Go to [openrouter.ai/keys](https://openrouter.ai/keys)
+2. Click **Create Key**
+3. Copy the key — it starts with `sk-or-v1-`
+
+<Note>
+  OpenRouter offers pay-as-you-go credits. A typical pipeline run costs $0.001–$0.005.
+</Note>
+
+## Add Your Key to CET
+
+1. Go to **Settings → API Keys**
+2. Paste your key in the input field
+3. Click **Validate Key** — CET calls the OpenRouter auth endpoint and returns your credit balance
+4. If valid, click **Save Key**
+5. Your key is immediately masked (`sk-or-masked`) — the full key is never shown again
+
+## How CET Secures Your Key
+
+1. You enter your key in Settings
+2. CET validates it against OpenRouter immediately
+3. The key is encrypted via **Supabase Vault (AES-256)**
+4. The encrypted key is stored in the database
+5. On each pipeline run, the server decrypts the key in memory and sends it directly to OpenRouter
+6. The key never touches your browser again after the initial save
+
+## Key States
+
+| State | What you see |
+|---|---|
+| No key | Warning banner, pipelines disabled |
+| Validating | Spinner on Validate Key button |
+| Valid | Masked display + credit balance |
+| Invalid | "Invalid key or no credits remaining" |
+| Removed | Reverts to no-key state |
+
+## Supported Models
+
+| Model | ID | Context | Role |
+|---|---|---|---|
+| Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6` | 1M tokens | Quality (Default) |
+| GLM-5 | `z-ai/glm-5` | — | Agent / Coding |
+| Gemini 3.1 Pro Preview | `google/gemini-3.1-pro-preview` | 1.05M tokens | Budget / RAG |
