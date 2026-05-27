@@ -11,20 +11,27 @@
     "light": "#A78BFA",
     "dark": "#7C3AED"
   },
-  "navigation": [
-    {
-      "group": "Getting Started",
-      "pages": ["docs/introduction", "docs/quickstart", "docs/connect-openrouter"]
-    },
-    {
-      "group": "Core Concepts",
-      "pages": ["docs/pipelines", "docs/knowledge-base", "docs/token-budgeting", "docs/byok"]
-    },
-    {
-      "group": "API Reference",
-      "pages": ["docs/api/authentication", "docs/api/settings", "docs/api/pipelines", "docs/api/knowledge", "docs/api/models", "docs/api/analytics"]
-    }
-  ],
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": ["docs/introduction", "docs/quickstart", "docs/connect-openrouter"]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": ["docs/pipelines", "docs/knowledge-base", "docs/token-budgeting", "docs/byok"]
+          },
+          {
+            "group": "API Reference",
+            "pages": ["docs/api/authentication", "docs/api/settings", "docs/api/pipelines", "docs/api/knowledge", "docs/api/models", "docs/api/analytics"]
+          }
+        ]
+      }
+    ]
+  },
   "footerSocials": {
     "github": "https://github.com/mohammedziada92/context-engineering-toolkit"
   }
