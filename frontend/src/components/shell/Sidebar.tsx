@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useRouter }   from 'next/navigation'
 import {
-  Layers, LayoutDashboard, GitBranch,
+  LayoutDashboard, GitBranch,
   Database, Gamepad2, BarChart2, Settings, LogOut,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
@@ -46,9 +46,12 @@ export function Sidebar({ onClose }: Props) {
     <aside className="flex flex-col h-full bg-zinc-950 border-r border-zinc-800">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-14 border-b border-zinc-800 shrink-0">
-        <div className="h-7 w-7 rounded-lg bg-violet-600 flex items-center justify-center">
-          <Layers className="h-4 w-4 text-white" />
-        </div>
+        <img
+          src="https://www.image2url.com/r2/default/images/1779700203013-7a29c0fa-6f5f-45b5-a83a-532b55c3af23.png"
+          alt="CET"
+          height={28}
+          className="h-7 w-auto"
+        />
         <span className="text-sm font-semibold text-zinc-100 tracking-tight">CET</span>
       </div>
 

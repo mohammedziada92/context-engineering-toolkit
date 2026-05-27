@@ -5,37 +5,53 @@ export const metadata: Metadata = { title: 'Sign In — CET' }
 
 export default function LoginPage() {
   return (
-    <div className="min-h-dvh grid grid-cols-1 md:grid-cols-[55fr_45fr]">
-      {/* Left — Full-bleed image panel (hidden on mobile) */}
-      <div className="hidden md:block relative bg-zinc-950">
-        <img
-          src="/assets/login-panel.png"
-          alt="CET"
-          className="h-full w-full object-cover"
-        />
-      </div>
+    <div className="min-h-screen w-full flex items-center justify-center py-12 bg-linear-to-br from-zinc-950 via-zinc-950 to-zinc-900">
+      {/* Centered card */}
+      <div className="container relative max-w-250">
+        <div className="relative bg-zinc-900/80 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden">
+          <div className="flex flex-col lg:flex-row items-stretch h-full">
 
-      {/* Right — Login form */}
-      <div className="flex items-center justify-center bg-zinc-950 px-4">
-        <div className="w-full max-w-100">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-xl bg-violet-600 flex items-center justify-center">
-                <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-white" stroke="currentColor" strokeWidth={2}>
-                  <rect x="3" y="3" width="7" height="7" rx="1" />
-                  <rect x="14" y="3" width="7" height="7" rx="1" />
-                  <rect x="3" y="14" width="7" height="7" rx="1" />
-                  <path d="M17.5 14v6M14.5 17h6" strokeLinecap="round" />
-                </svg>
+            {/* Left — Image panel (hidden on mobile) */}
+            <div className="hidden lg:block w-120 relative bg-primary shrink-0">
+              <div className="absolute inset-0">
+                <img
+                  src="https://www.image2url.com/r2/default/images/1779701783083-b4c00c71-473c-4bf8-a7c8-5068a4e06d3c.png"
+                  alt="CET"
+                  className="object-cover h-full w-full"
+                />
               </div>
-              <span className="text-lg font-semibold text-zinc-100 tracking-tight">
-                Context Engineering Toolkit
-              </span>
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-linear-to-r from-black/50 via-black/25 to-transparent" />
+              {/* Bottom text */}
+              <div className="relative p-8 text-white space-y-2 flex flex-col justify-end h-full pb-16">
+                <h2 className="text-2xl font-bold">Welcome to CET</h2>
+                <p className="text-white/90">Engineer better context. Build smarter LLM pipelines.</p>
+              </div>
             </div>
-          </div>
 
-          <LoginForm />
+            {/* Right — Login form (untouched) */}
+            <div className="w-full lg:w-120 relative z-10 p-8">
+              <div className="w-full">
+                {/* Logo */}
+                <div className="flex justify-center mb-8">
+                  <div className="flex items-center gap-2.5">
+                    <img
+                      src="https://www.image2url.com/r2/default/images/1779700203013-7a29c0fa-6f5f-45b5-a83a-532b55c3af23.png"
+                      alt="CET"
+                      height={36}
+                      className="h-9 w-auto"
+                    />
+                    <span className="text-lg font-semibold text-zinc-100 tracking-tight">
+                      Context Engineering Toolkit
+                    </span>
+                  </div>
+                </div>
+
+                <LoginForm />
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
     </div>
