@@ -27,7 +27,7 @@ export default function LandingPage() {
           />
         </Link>
         <div className="flex items-center gap-6">
-          <a href="#" className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors">Docs</a>
+          <a href="https://cet.mintlify.app/docs/introduction" target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors">Docs</a>
           <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors">GitHub</a>
           <Link href="/login" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">Sign In</Link>
         </div>
@@ -112,7 +112,7 @@ export default function LandingPage() {
       {/* ── Footer ───────────────────────────────────────── */}
       <footer className="border-t border-zinc-800 py-6 text-center text-sm text-zinc-500">
         © 2026 CET ·{' '}
-        <a href="#" className="hover:text-zinc-300 transition-colors">Docs</a>{' · '}
+        <a href="https://cet.mintlify.app/docs/introduction" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">Docs</a>{' · '}
         <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">GitHub</a>{' · '}
         <a href="#" className="hover:text-zinc-300 transition-colors">Privacy</a>{' · '}
         <a href="#" className="hover:text-zinc-300 transition-colors">Terms</a>

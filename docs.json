@@ -1,11 +1,11 @@
 {
-  "name": "CET",
+  "name": "CET — Context Engineering Toolkit",
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "https://www.image2url.com/r2/default/images/1779700536639-9eb5805b-6cd7-4c89-bec8-f67cbb4f8906.png",
+    "light": "https://www.image2url.com/r2/default/images/1779700536639-9eb5805b-6cd7-4c89-bec8-f67cbb4f8906.png"
   },
   "theme": "mint",
-  "favicon": "/favicon.svg",
+  "favicon": "https://www.image2url.com/r2/default/images/1779700536639-9eb5805b-6cd7-4c89-bec8-f67cbb4f8906.png",
   "colors": {
     "primary": "#8B5CF6",
     "light": "#A78BFA",
