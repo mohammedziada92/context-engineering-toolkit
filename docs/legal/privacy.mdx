@@ -1,0 +1,135 @@
+---
+title: "privacy"
+---
+
+---
+
+title: "Privacy Policy"
+
+description: "How CET collects, uses, and protects your data."
+
+---
+
+**Effective Date:** May 27, 2026
+
+## Overview
+
+The Context Engineering Toolkit (CET) is a developer tool for building, testing, and optimizing LLM context pipelines. CET operates on a **BYOK (Bring Your Own Key)** model — we do not pay for or control your LLM usage.
+
+## What Data We Collect
+
+**Account Data**
+
+- Email address — via Google OAuth, GitHub OAuth, or Email OTP
+
+- Name and avatar — from your OAuth provider (optional, can be updated)
+
+- We do not store passwords
+
+**API Keys**
+
+- Your OpenRouter API key is encrypted at rest using Supabase Vault
+
+- Never returned in full after initial save — only a masked version `sk-or-****`) is shown
+
+- Used server-side only to route your LLM calls through OpenRouter
+
+**Usage Data**
+
+- Pipeline configurations (canvas state, node settings, saved prompts)
+
+- Pipeline run logs (token counts, cost estimates, latency, model used, retrieved chunks)
+
+- Knowledge base content (uploaded documents, text chunks, vector embeddings)
+
+- Chat session history (Playground messages)
+
+**Analytics**
+
+Aggregated usage metrics per user: token usage, cost, latency, and run counts over time. We do not use third-party analytics trackers.
+
+## How We Use Your Data
+
+| Data | Purpose |
+
+|------|---------|
+
+| Email address | Account identification, login, session management |
+
+| OpenRouter API key | Routing your LLM calls via OpenRouter (BYOK) |
+
+| Pipeline data | Saving and restoring your work |
+
+| Run logs | Powering the Analytics dashboard |
+
+| Knowledge base content | Vector search during pipeline execution |
+
+We do **not** sell your data. We do not use your data to train AI models.
+
+## Data Isolation
+
+All data is isolated per user using **Row Level Security (RLS)** enforced at the database level. No other user can access your data.
+
+## Third-Party Services
+
+| Service | Purpose | Data Shared |
+
+|---------|---------|-------------|
+
+| Supabase | Database, auth, file storage | All user data stored here |
+
+| OpenRouter | LLM routing | Your API key and prompt content per request |
+
+| Vercel | Frontend hosting | Request metadata (IP, headers) |
+
+| Railway | Backend hosting | Request metadata (IP, headers) |
+
+| Sentry | Error monitoring | Stack traces, anonymized error context |
+
+| Buy Me a Coffee | Optional donations | Your payment data is handled entirely by Buy Me a Coffee — CET never sees or stores it |
+
+## Data Retention
+
+- Account data retained while your account is active
+
+- Pipeline and run data retained until you delete it or your account
+
+- Deleted knowledge sources cascade-delete all associated chunks and embeddings
+
+- Account deletion is permanent and irreversible
+
+You can delete your account at any time from **Settings → Profile → Danger Zone**.
+
+## Security
+
+- API keys encrypted at rest via Supabase Vault
+
+- All data access protected by Row Level Security (RLS)
+
+- All API requests require a valid JWT token verified on every request
+
+- All data in transit encrypted via HTTPS/TLS
+
+- API keys are never logged, never returned in full, never sent to the frontend after initial save
+
+## Your Rights
+
+- **Access** — all your data is visible within the CET app
+
+- **Export** — pipelines can be exported as JSON
+
+- **Delete** — delete individual resources or your entire account at any time
+
+- **Correct** — update your name, avatar, and preferences in Settings
+
+## Children's Privacy
+
+CET is intended for users aged 18 and older. We do not knowingly collect data from children under 13.
+
+## Changes to This Policy
+
+We may update this policy as CET evolves. Continued use after changes constitutes acceptance.
+
+## Contact
+
+\[github.com/mohammedziada92/context-engineering-toolkit\](https://github.com/mohammedziada92/context-engineering-toolkit)
