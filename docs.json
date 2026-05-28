@@ -27,6 +27,13 @@
           {
             "group": "API Reference",
             "pages": ["docs/api/authentication", "docs/api/settings", "docs/api/pipelines", "docs/api/knowledge", "docs/api/models", "docs/api/analytics"]
+          },
+          {
+            "group": "Legal",
+            "pages": [
+              "docs/legal/privacy",
+              "docs/legal/terms"
+            ]
           }
         ]
       }
