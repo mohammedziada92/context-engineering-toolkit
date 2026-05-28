@@ -31,7 +31,6 @@
           {
             "group": "Legal",
             "pages": [
-              "docs/legal/privacy",
               "docs/legal/terms"
             ]
           }
