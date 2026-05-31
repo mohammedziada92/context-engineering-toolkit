@@ -1,3 +1,4 @@
+import { Suspense, type ReactNode } from 'react'
 import type { Metadata } from 'next'
 import { LoginForm } from '@/components/auth/LoginForm'
 
@@ -47,7 +48,9 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <LoginForm />
+                <Suspense fallback={<div className="h-64" />}>
+                  <LoginForm />
+                </Suspense>
               </div>
             </div>
 

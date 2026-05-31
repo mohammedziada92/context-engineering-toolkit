@@ -38,6 +38,13 @@ class SessionConfig(BaseModel):
     top_k: int = Field(default=5, ge=1, le=20)
     threshold: float = Field(default=0.50, ge=0.0, le=1.0)
 
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str) -> str:
+        if v and v not in settings.ALLOWED_MODEL_IDS:
+            raise ValueError(f"model must be one of: {settings.ALLOWED_MODEL_IDS}")
+        return v
+
 
 # ── Chat sessions ────────────────────────────────────────────────
 
@@ -124,3 +131,10 @@ class ChatRequest(BaseModel):
     knowledge_source_id: str | None = None
     top_k: int = Field(default=5, ge=1, le=20)
     threshold: float = Field(default=0.50, ge=0.0, le=1.0)
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str) -> str:
+        if v and v not in settings.ALLOWED_MODEL_IDS:
+            raise ValueError(f"model must be one of: {settings.ALLOWED_MODEL_IDS}")
+        return v

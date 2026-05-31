@@ -1,7 +1,34 @@
+import os
+import base64
 import httpx
 from supabase import create_client, Client
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from app.core.config import settings
+
+
+def _get_vault_key() -> bytes:
+    """Load the AES-256-GCM encryption key from env."""
+    key_b64 = settings.VAULT_ENCRYPTION_KEY
+    if not key_b64:
+        raise RuntimeError("VAULT_ENCRYPTION_KEY not set — cannot encrypt/decrypt API keys")
+    return base64.b64decode(key_b64)
+
+
+def encrypt_api_key(plaintext: str) -> str:
+    """Encrypt an API key using AES-256-GCM. Returns base64(nonce + ciphertext)."""
+    aesgcm = AESGCM(_get_vault_key())
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, plaintext.encode(), None)
+    return base64.b64encode(nonce + ciphertext).decode()
+
+
+def decrypt_api_key(encrypted: str) -> str:
+    """Decrypt an AES-256-GCM encrypted API key."""
+    aesgcm = AESGCM(_get_vault_key())
+    data = base64.b64decode(encrypted)
+    nonce, ciphertext = data[:12], data[12:]
+    return aesgcm.decrypt(nonce, ciphertext, None).decode()
 
 
 def _get_service_client() -> Client:
@@ -29,12 +56,13 @@ async def validate_openrouter_key(api_key: str) -> dict:
 
 
 async def save_api_key(user_id: str, api_key: str, default_model: str) -> None:
-    """Save or update the OpenRouter API key for a user (upsert)."""
+    """Save or update the OpenRouter API key for a user (encrypted at rest)."""
+    encrypted = encrypt_api_key(api_key)
     client = _get_service_client()
     client.table("user_settings").upsert(
         {
             "user_id": user_id,
-            "openrouter_api_key": api_key,
+            "openrouter_api_key": encrypted,
             "default_model": default_model,
         },
         on_conflict="user_id",
@@ -42,7 +70,7 @@ async def save_api_key(user_id: str, api_key: str, default_model: str) -> None:
 
 
 async def get_decrypted_key(user_id: str) -> str | None:
-    """Retrieve the stored API key for a user (server-side only)."""
+    """Retrieve and decrypt the stored API key for a user (server-side only)."""
     client = _get_service_client()
     result = (
         client.table("user_settings")
@@ -51,8 +79,14 @@ async def get_decrypted_key(user_id: str) -> str | None:
         .execute()
     )
     if result.data:
-        key = result.data[0].get("openrouter_api_key")
-        return key if key else None
+        encrypted = result.data[0].get("openrouter_api_key")
+        if not encrypted:
+            return None
+        try:
+            return decrypt_api_key(encrypted)
+        except Exception:
+            # Key was stored before encryption was enabled — return as-is for migration
+            return encrypted
     return None
 
 
@@ -66,7 +100,12 @@ async def get_settings(user_id: str) -> dict | None:
         .execute()
     )
     if result.data:
-        return result.data[0]
+        row = result.data[0]
+        # Mask the API key in the response
+        encrypted = row.get("openrouter_api_key", "")
+        if encrypted:
+            row["openrouter_api_key"] = "sk-or-masked"
+        return row
     return None
 
 

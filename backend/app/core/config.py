@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str = ""
 
     # Postgres
-    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_PASSWORD: str = ""
 
     # OpenRouter
     OPENROUTER_API_KEY: str = ""
@@ -39,6 +39,9 @@ class Settings(BaseSettings):
 
     # Error Tracking
     SENTRY_DSN: str = ""
+
+    # Vault encryption
+    VAULT_ENCRYPTION_KEY: str = ""
 
     @property
     def ALLOWED_MODEL_IDS(self) -> list[str]:

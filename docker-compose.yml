@@ -12,7 +12,7 @@ services:
     ports:
       - "55432:5432"
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -41,7 +41,7 @@ services:
       GOTRUE_API_PORT: 9999
       API_EXTERNAL_URL: http://localhost:8000
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-postgres}@cet-db:5432/postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@cet-db:5432/postgres
       GOTRUE_SITE_URL: http://localhost:3000
       GOTRUE_URI_ALLOW_LIST: ""
       GOTRUE_DISABLE_SIGNUP: "false"
@@ -49,7 +49,7 @@ services:
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_EXP: 3600
-      GOTRUE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_MAILER_AUTOCONFIRM: "true"
       GOTRUE_SMS_AUTOCONFIRM: "true"
@@ -82,10 +82,10 @@ services:
     ports:
       - "55421:3000"
     environment:
-      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-postgres}@cet-db:5432/postgres
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@cet-db:5432/postgres
       PGRST_DB_SCHEMAS: public,storage
       PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      PGRST_JWT_SECRET: ${JWT_SECRET}
       PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_OPENAPI_SERVER_PROXY_URI: http://cet-rest:3000/
     restart: unless-stopped
@@ -106,14 +106,14 @@ services:
       DB_HOST: cet-db
       DB_PORT: 5432
       DB_USER: supabase_admin
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: postgres
       DB_AFTER_CONNECT_QUERY: "SET search_path TO realtime,public"
       DB_ENC_KEY: supabaserealtimeencryptionkey123
       FLY_APP_NAME: realtime
       APP_NAME: realtime
       SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgC9fS2miUbYJays15KKBnOHR4cd3g==
-      METRICS_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      METRICS_JWT_SECRET: ${JWT_SECRET}
       ERL_AFLAGS: -proto_dist inet_tcp
       ENABLE_TAILSCALE: "false"
       DNS_NODES: "''"
@@ -136,8 +136,8 @@ services:
       ANON_KEY: ${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}
       SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU}
       POSTGREST_URL: http://cet-rest:3000
-      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
-      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD:-postgres}@cet-db:5432/postgres
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@cet-db:5432/postgres
       FILE_STORAGE_BACKEND: file
       FILE_STORAGE_FILE_PATH: /var/lib/storage
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
@@ -163,12 +163,12 @@ services:
     environment:
       STUDIO_PG_META_URL: http://cet-meta:8080
       STUDIO_DEFAULT_PROJECT_NAME: CET Local
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       SUPABASE_URL: http://cet-rest:3000
       SUPABASE_PUBLIC_URL: http://localhost:55421
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}
       SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU}
-      AUTH_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      AUTH_JWT_SECRET: ${JWT_SECRET}
       STUDIO_DEFAULT_ORGANIZATION_ID: cet-local
       STUDIO_DEFAULT_PROJECT_ID: cet-local
       SNIPPETS_MANAGEMENT_FOLDER: /var/lib/studio/snippets
@@ -191,7 +191,7 @@ services:
       PG_META_DB_PORT: 5432
       PG_META_DB_NAME: postgres
       PG_META_DB_USER: supabase_admin
-      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
     restart: unless-stopped
     networks:
       - cet-network

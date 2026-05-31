@@ -2,11 +2,45 @@ from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
+import ipaddress, socket
+from urllib.parse import urlparse
 from app.middleware.auth import get_current_user
 from app.db.queries import knowledge as db
 from app.services import vault_service
 
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
+
+
+# ── SSRF protection ────────────────────────────────────────────────────────────
+
+BLOCKED_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fd00::/8"),
+]
+
+
+def validate_url_no_ssrf(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only http/https URLs allowed")
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Invalid URL: no hostname")
+    try:
+        ip = ipaddress.ip_address(socket.gethostbyname(hostname))
+        for network in BLOCKED_NETWORKS:
+            if ip in network:
+                raise HTTPException(
+                    status_code=400,
+                    detail="URL resolves to a private or reserved IP address",
+                )
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail="Could not resolve hostname")
 
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
@@ -127,6 +161,7 @@ async def ingest_url(id: str, body: IngestUrlBody, user=Depends(get_current_user
     if not source:
         raise HTTPException(404, "Knowledge source not found")
     api_key = await _require_api_key(user["sub"])
+    validate_url_no_ssrf(body.url)
     job_id = await db.queue_ingest_url(id, body.url, body.metadata, api_key=api_key)
     return {"job_id": job_id, "status": "queued"}
 

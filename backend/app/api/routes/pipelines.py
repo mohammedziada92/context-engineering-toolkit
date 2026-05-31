@@ -3,6 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+from uuid import UUID
 import uuid, json, asyncio
 
 from app.middleware.auth import get_current_user, get_current_user_sse
@@ -13,6 +15,21 @@ from app.models.pipeline import (
 )
 from app.services.pipeline_engine import execute_pipeline
 from app.services import vault_service
+from app.core.config import settings
+
+
+class PipelineRunRequest(BaseModel):
+    """Typed request body for POST /pipelines/{id}/run."""
+    message: str = Field(..., max_length=10000)
+    session_id: Optional[str] = None
+    model_override: Optional[str] = None
+
+    @field_validator("model_override")
+    @classmethod
+    def validate_model(cls, v):
+        if v and v not in settings.ALLOWED_MODEL_IDS:
+            raise ValueError(f"model must be one of: {settings.ALLOWED_MODEL_IDS}")
+        return v
 
 router = APIRouter(prefix="/api/v1/pipelines", tags=["pipelines"])
 
@@ -83,6 +100,10 @@ async def run_pipeline_stream(
     user=Depends(get_current_user_sse),
 ):
     """SSE stream endpoint for pipeline runs from EventSource (GET + query-string auth)."""
+    # Validate model_override against whitelist
+    if model_override and model_override not in settings.ALLOWED_MODEL_IDS:
+        raise HTTPException(status_code=422, detail=f"Invalid model ID. Must be one of: {settings.ALLOWED_MODEL_IDS}")
+
     user_id = user["sub"]
     api_key = await vault_service.get_decrypted_key(user_id)
     if not api_key:
@@ -121,7 +142,7 @@ async def run_pipeline_stream(
 @router.post("/{pipeline_id}/run")
 async def run_pipeline_post(
     pipeline_id: str,
-    body: dict,
+    body: PipelineRunRequest,
     user=Depends(get_current_user),
 ):
     """Non-streaming run — returns run_id immediately; client polls /runs/{run_id}."""
@@ -134,11 +155,11 @@ async def run_pipeline_post(
     asyncio.create_task(
         execute_pipeline(
             pipeline_config={},
-            user_message=body.get("message", ""),
+            user_message=body.message,
             user_id=user_id,
             session_id=run_id,
             pipeline_id=pipeline_id,
-            model_override=body.get("model_override"),
+            model_override=body.model_override,
             api_key=api_key,
         )
     )

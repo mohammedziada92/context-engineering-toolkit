@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+function sanitizeNext(raw: string | null): string {
+  const fallback = "/dashboard";
+  if (!raw) return fallback;
+  if (!raw.startsWith("/")) return fallback;
+  if (raw.startsWith("//") || raw.startsWith("/\\")) return fallback;
+  return raw;
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
 
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = sanitizeNext(searchParams.get("next"));
 
   const supabase = await createServerSupabaseClient();
 
@@ -15,7 +23,7 @@ export async function GET(request: Request) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(new URL(next, origin).toString());
     }
   }
 
@@ -23,7 +31,7 @@ export async function GET(request: Request) {
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as "magiclink" | "signup" | "email" });
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(new URL(next, origin).toString());
     }
   }
 

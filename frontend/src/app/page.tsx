@@ -114,8 +114,8 @@ export default function LandingPage() {
         © 2026 CET ·{' '}
         <a href="https://cet.mintlify.app/docs/introduction" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">Docs</a>{' · '}
         <a href="https://github.com/mohammedziada92/context-engineering-toolkit" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">GitHub</a>{' · '}
-        <a href="#" className="hover:text-zinc-300 transition-colors">Privacy</a>{' · '}
-        <a href="#" className="hover:text-zinc-300 transition-colors">Terms</a>
+        <a href="/privacy" className="hover:text-zinc-300 transition-colors">Privacy</a>{' · '}
+        <a href="/terms" className="hover:text-zinc-300 transition-colors">Terms</a>
       </footer>
     </div>
   )
