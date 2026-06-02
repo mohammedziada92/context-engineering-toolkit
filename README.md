@@ -42,7 +42,13 @@ CET is **BYOK** (Bring Your Own Key) — you connect your own [OpenRouter](https
 
 ## Screenshots
 
-> Dashboard · Pipeline Canvas · Knowledge Base · Playground · Analytics
+| Dashboard | Pipeline Canvas |
+|---|---|
+| ![Dashboard](docs/screenshots/Dashboard.png) | ![Pipeline Canvas](docs/screenshots/pipeline-canvas.png) |
+
+| Knowledge Base | Playground | Analytics |
+|---|---|---|
+| ![Knowledge](docs/screenshots/knowledge-base.png) | ![Playground](docs/screenshots/PlayGround.png) | ![Analytics](docs/screenshots/analytics.png) |
 
 ---
 
