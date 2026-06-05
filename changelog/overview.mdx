@@ -1,0 +1,29 @@
+---
+title: "Changelog"
+description: "Recent updates and improvements to CET."
+---
+
+<Update label="June 5, 2026" description="Open source launch, security hardening, and legal pages">
+
+## New
+
+**CET is now open source under AGPL v3.** The full Context Engineering Toolkit is publicly available. Bug reports and feature requests are now welcome through GitHub issue templates, and contributors should review the project's Code of Conduct before participating.
+
+**Privacy Policy and Terms of Service pages are live.** Both are linked from the docs and accessible without sign-in. See [Privacy](/docs/legal/privacy) and [Terms](/docs/legal/terms).
+
+## Updates
+
+**Stronger BYOK key encryption.** Your OpenRouter API keys are now encrypted with AES-256-GCM inside Supabase Vault before they ever touch the database. Nothing about how you connect your key changes — see [Connect OpenRouter](/docs/connect-openrouter) and the [BYOK model](/docs/byok) for the full story.
+
+**Model whitelist enforced on pipeline and chat requests.** Pipeline runs and chat sessions now validate the requested model against an allowed list, blocking typos and unsupported providers before a request is sent. If you hit an unexpected validation error, double-check the model slug against the [Models API](/docs/api/models).
+
+**SSRF protection on knowledge ingestion.** When you ingest content from a URL into your [knowledge base](/docs/knowledge-base), CET now blocks requests to internal network ranges and cloud metadata endpoints. Public URLs continue to work as before.
+
+**Sign-in security hardening.** OAuth callback redirects are now validated to prevent open-redirect attacks, and several underlying dependencies were upgraded to address security advisories.
+
+## Fixes
+
+- **Login page no longer renders blank under certain conditions.** Sign-in flows now load reliably across browsers.
+- **Self-hosted deployments now require explicit secrets.** Default fallback values for database passwords, JWT secrets, and service keys have been removed. If you self-host, set every variable in your `.env` before starting the stack — see [Setup](/docs/quickstart).
+
+</Update>
