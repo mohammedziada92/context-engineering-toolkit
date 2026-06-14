@@ -265,14 +265,23 @@ export function PlaygroundPageContent() {
       const res = await postChatStream(payload, abortRef.current.signal)
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
+      let buffer = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const lines = decoder.decode(value).split('\n')
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
         for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const data = JSON.parse(line.slice(6))
+          const clean = line.replace(/\r$/, '')
+          if (!clean.startsWith('data: ')) continue
+          let data
+          try {
+            data = JSON.parse(clean.slice(6))
+          } catch {
+            continue
+          }
 
           if (data.status === 'warning' && data.error_code === 'no_knowledge_base') {
             warningReceived = true
@@ -312,6 +321,8 @@ export function PlaygroundPageContent() {
           }
         }
       }
+      // flush decoder held-back bytes + any final line lacking a trailing newline
+      buffer += decoder.decode()
     } catch (err: unknown) {
       if ((err as Error)?.name !== 'AbortError') {
         setMessages((m) =>

@@ -93,19 +93,21 @@ export function usePipelineRun(pipelineId: string) {
 
         const reader = res.body!.getReader();
         const decoder = new TextDecoder();
+        let buffer = "";
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const text = decoder.decode(value);
-          const lines = text
-            .split("\n")
-            .filter((l) => l.startsWith("data: "));
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
 
           for (const line of lines) {
+            const clean = line.replace(/\r$/, "");
+            if (!clean.startsWith("data: ")) continue;
             try {
-              const data = JSON.parse(line.slice(6));
+              const data = JSON.parse(clean.slice(6));
 
               if (data.status === "done" && data.analytics) {
                 setState((s) => ({
@@ -134,6 +136,8 @@ export function usePipelineRun(pipelineId: string) {
             }
           }
         }
+        // flush decoder held-back bytes + any final line lacking a trailing newline
+        buffer += decoder.decode();
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         setState((s) => ({
