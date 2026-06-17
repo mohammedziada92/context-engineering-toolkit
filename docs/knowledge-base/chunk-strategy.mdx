@@ -1,0 +1,89 @@
+---
+title: "Chunk Strategy Guide"
+description: "How to choose chunk size, overlap, and document structure for accurate RAG retrieval."
+---
+
+# Chunk Strategy Guide
+
+How you split your source documents directly determines the quality of retrieved answers. A pipeline with a perfect system prompt will still return poor results if the chunks are malformed. This guide explains how to choose the right chunking settings for different document types.
+
+---
+
+## How Chunking Works in CET
+
+When you upload a document, CET splits it into segments (chunks), embeds each one as a vector, and stores them in the knowledge base. When a user sends a query, the RAG node finds the chunks most semantically similar to that query and injects them into the context window.
+
+The retriever does not understand your document's structure — it only finds chunks that match the query. If a code example is split across two chunks, neither chunk is complete enough to be useful on its own.
+
+---
+
+## Chunk Size Reference
+
+| Document type | Recommended chunk size | Overlap | Why |
+|---|---|---|---|
+| API docs with code snippets | 256 tokens | 20 tokens | Each example fits in one chunk |
+| Technical prose / README | 512 tokens | 50 tokens | Needs more context per concept |
+| FAQ / Q&A pairs | 128–256 tokens | 10 tokens | Each Q&A should be its own chunk |
+| Long-form articles / guides | 512–768 tokens | 75 tokens | Argument spans multiple sentences |
+| Legal / policy documents | 512 tokens | 100 tokens | High overlap preserves clause context |
+
+---
+
+## The Two Most Common Mistakes
+
+**1. Chunk size too large**
+
+When chunks are too large (1,000+ tokens), the retriever pulls a chunk that contains the answer but also contains a lot of irrelevant text. The LLM has to work harder to extract the relevant part, and the answer quality drops.
+
+Signs of this problem:
+- The answer is correct but includes unnecessary surrounding context
+- Token usage per query is higher than expected
+- The pipeline sometimes injects a 900-token chunk when only 100 tokens were relevant
+
+Fix: Reduce chunk size to 256–512 and re-upload the document.
+
+**2. Missing section breaks in the source**
+
+CET splits on token count, not on meaning. If your source document has no clear section breaks — just one long wall of text — the chunker will cut in the middle of sentences or code blocks.
+
+Signs of this problem:
+- Chunk preview shows sentences that start mid-thought
+- Code examples appear truncated in chunk previews
+- The pipeline retrieves the right section but the snippet is incomplete
+
+Fix: Add clear `##` headings and blank lines between sections in your source document before uploading.
+
+---
+
+## How to Verify Your Chunks
+
+After uploading, always check the chunk quality before running a pipeline:
+
+1. Open the Knowledge Source detail page
+2. Click **Preview Chunks** — this shows the first 5 chunks as the retriever sees them
+3. Check each chunk: does it contain one complete idea or code example?
+4. If chunks are cut mid-sentence or mid-code-block, delete the source, fix the document structure, and re-upload
+
+This step takes 2 minutes and prevents hours of debugging unclear pipeline responses.
+
+---
+
+## When to Use Multiple Documents
+
+Split your content into separate knowledge source files when:
+
+- Topics are completely unrelated (authentication docs + billing docs)
+- One section is updated frequently while others are stable
+- You want to enable/disable a section without re-uploading everything
+
+Keep content in one file when:
+
+- Topics are related and queries often span both (e.g., auth + rate limits)
+- The total document is under 50 pages
+- You want the retriever to find cross-section context
+
+---
+
+## Re-uploading After Changes
+
+When your source documentation changes, delete the old knowledge source and upload a fresh version — do not add the updated file on top of the existing one. CET stores embeddings at upload time. If the source changes but the old chunks remain, the retriever will return outdated answers alongside new ones.

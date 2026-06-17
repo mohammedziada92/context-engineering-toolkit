@@ -30,8 +30,19 @@
             "pages": ["docs/introduction", "docs/quickstart", "docs/connect-openrouter"]
           },
           {
+            "group": "Use Cases",
+            "pages": ["docs/use-cases/api-docs-bot"]
+          },
+          {
             "group": "Core Concepts",
-            "pages": ["docs/pipelines", "docs/knowledge-base", "docs/token-budgeting", "docs/byok"]
+            "pages": [
+              "docs/pipelines",
+              "docs/knowledge-base",
+              "docs/knowledge-base/chunk-strategy",
+              "docs/nodes/chat-history",
+              "docs/token-budgeting",
+              "docs/byok"
+            ]
           },
           {
             "group": "API Reference",

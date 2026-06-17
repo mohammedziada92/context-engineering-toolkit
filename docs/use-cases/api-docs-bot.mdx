@@ -1,0 +1,165 @@
+---
+title: "Build an API Docs Bot"
+description: "End-to-end guide to building a developer documentation bot with RAG and Chat History in CET."
+---
+
+# Build an API Documentation Bot
+
+This guide walks you through building a developer-facing documentation bot using CET — a pipeline that answers code questions with exact snippets retrieved from your API docs.
+
+By the end you will have a live pipeline that:
+- Returns the correct code snippet for any SDK question
+- Understands follow-up questions in the same session ("what about rotating that key?")
+- Stays under a tight token budget so every answer is concise and costs less
+
+---
+
+## What You Will Build
+
+```
+[System Prompt] → [RAG Node] → [Chat History Node] → [LLM Node] → [Output Node]
+```
+
+A 5-node pipeline that retrieves relevant chunks from your API docs, injects conversation context, and produces code-first answers in under 150 words.
+
+---
+
+## Step 1 — Prepare Your Knowledge Base
+
+Good chunking is the foundation. Before uploading your docs, structure them so each section is self-contained.
+
+**Recommended format for API docs:**
+
+````markdown
+## Section Title
+
+One paragraph describing what this covers.
+
+```python
+# The exact code snippet that solves this problem
+```
+
+Field descriptions or notes below the snippet.
+````
+
+Each section — one concept, one snippet — becomes one clean chunk. When sections bleed into each other, the retriever pulls incomplete context and the answer suffers.
+
+**Upload settings to use:**
+
+| Setting | Value | Why |
+|---|---|---|
+| Chunk size | 256 tokens | Matches the size of one code example + description |
+| Chunk overlap | 20 tokens | Preserves context across section boundaries |
+| Similarity threshold | 0.82 | Strict — only retrieve highly relevant chunks |
+| Top-K | 3 | Keeps context window tight and answers focused |
+
+> **Tip:** After uploading, open the Knowledge Source detail page and preview the first 5 chunks. If a chunk ends mid-sentence or cuts a code block in half, your source document needs clearer section breaks.
+
+---
+
+## Step 2 — Write the System Prompt
+
+Open **Pipelines → New Pipeline** and add a System Prompt node. Use this template:
+
+```
+You are a precise developer documentation assistant.
+
+Your job is to answer developer questions by returning:
+1. The exact code snippet that solves their problem.
+2. One sentence of context explaining what the snippet does.
+3. If relevant, the method or endpoint name in backticks.
+
+RULES:
+- Never write more than 150 words total per response.
+- Always lead with the code block. Never start with prose.
+- If the retrieved context does not contain a clear answer, respond with:
+  "I don't have a specific code example for that. Check the docs at [relevant section]."
+- Do not add introductions or "I hope this helps" closings.
+
+TONE: Direct. Developer-to-developer. No filler.
+
+CONTEXT WINDOW BUDGET:
+Use only the retrieved chunks that contain code examples.
+Ignore chunks with only prose descriptions.
+```
+
+**Token budget for this node:** 200 tokens maximum.
+
+---
+
+## Step 3 — Configure the RAG Node
+
+Add a RAG node and connect it after the System Prompt node.
+
+- **Knowledge source:** select the API docs KB you uploaded in Step 1
+- **Top-K:** 3
+- **Similarity threshold:** 0.82
+- **Max token allocation:** 800 tokens
+
+The RAG node retrieves the top 3 most relevant chunks from your KB and injects them into the context window before the LLM sees the user's question.
+
+---
+
+## Step 4 — Add the Chat History Node
+
+Add a Chat History node and connect it between the RAG node and the LLM node.
+
+**Why this matters:** Without chat history, a follow-up question like *"how do I rotate that key?"* arrives with no context — the pipeline doesn't know what "that key" refers to and retrieves the wrong chunks. With chat history, the previous exchange is in context and retrieval is accurate.
+
+**Configuration:**
+
+| Setting | Value |
+|---|---|
+| Strategy | `keep` |
+| Max token allocation | 500 tokens |
+| Window size | 5 messages |
+
+The `keep` strategy preserves the last 5 messages verbatim. For API docs bots where sessions are short and questions are precise, this is the right choice. See the [Chat History Strategies guide](/docs/nodes/chat-history) for when to use `summarize` or `truncate` instead.
+
+---
+
+## Step 5 — Configure the LLM Node
+
+Add an LLM node after the Chat History node.
+
+| Setting | Recommended value |
+|---|---|
+| Model | `google/gemini-3.1-pro-preview` (Budget/RAG role) |
+| Temperature | 0.1 |
+| Max output tokens | 300 |
+
+Low temperature keeps answers deterministic — you want the same question to return the same snippet every time, not a creative variation. The Budget/RAG model is ideal here: high-volume doc lookups do not need the quality tier.
+
+---
+
+## Step 6 — Test in the Playground
+
+Open the Playground, select your new pipeline, and start a new session. Send these three questions **in sequence without starting a new session**:
+
+```
+1. How do I authenticate requests using an API key?
+2. What happens if that key expires — how do I rotate it?
+3. Show me a complete example of making a paginated list request with error handling.
+```
+
+**What to look for:**
+
+- Q1 should return an auth code block immediately, no prose introduction
+- Q2 should understand "that key" refers to the API key from Q1 — this confirms Chat History is working
+- Q3 should return the full paginated function leading with the code block
+
+If Q2 returns a generic answer unrelated to API keys, check that the Chat History node is connected and the window size is at least 3 messages.
+
+---
+
+## Token Budget Breakdown
+
+| Node | Budget | Typical usage |
+|---|---|---|
+| System Prompt | 200 tokens | ~150 tokens (the prompt above) |
+| RAG Context | 800 tokens | ~600 tokens (3 chunks × ~200 tokens each) |
+| Chat History | 500 tokens | ~200 tokens (5 short dev exchanges) |
+| LLM Output | 300 tokens | ~120 tokens (code + 1 sentence) |
+| **Total** | **1,800 tokens** | **~1,070 tokens typical** |
+
+This pipeline costs roughly **$0.002–$0.004 per query** on the Budget/RAG model — well under 1 cent per question.

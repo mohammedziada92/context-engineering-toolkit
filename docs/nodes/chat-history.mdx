@@ -1,0 +1,106 @@
+---
+title: "Chat History Node"
+description: "How the Chat History node works, and when to use keep, truncate, or summarize strategies."
+---
+
+# Chat History Node
+
+The Chat History node injects previous messages from the current session into the context window before the LLM generates a response. This enables the pipeline to answer follow-up questions that reference earlier parts of the conversation.
+
+---
+
+## Why It Matters
+
+Without a Chat History node, every message is treated as a new, independent question. The pipeline has no memory of what was discussed. This is fine for one-shot lookups but breaks for any conversational use case.
+
+**Example — without Chat History:**
+
+```
+User: How do I authenticate with the API?
+Bot:  [correct answer about API key auth]
+
+User: What happens when that key expires?
+Bot:  [retrieves wrong context — doesn't know "that key" = the API key]
+```
+
+**Example — with Chat History:**
+
+```
+User: How do I authenticate with the API?
+Bot:  [correct answer about API key auth]
+
+User: What happens when that key expires?
+Bot:  [correct answer about key rotation — understands the reference]
+```
+
+---
+
+## Configuration Options
+
+### Strategy
+
+The strategy controls how the pipeline handles the chat history when it grows beyond the token budget.
+
+| Strategy | Behaviour | Best for |
+|---|---|---|
+| `keep` | Preserves the most recent N messages verbatim | Short sessions, dev tools, precise Q&A |
+| `truncate` | Drops the oldest messages first when budget is exceeded | Long sessions where recent context is most important |
+| `summarize` | Calls the LLM to compress older messages into a summary | Very long sessions where full history is too large to keep |
+
+**Choosing a strategy:**
+
+- Use `keep` for developer tools, docs bots, and support bots with short sessions (under 10 exchanges). It is the most accurate and predictable.
+- Use `truncate` when sessions are longer but the most recent context always matters more than earlier context. Simple, no extra LLM cost.
+- Use `summarize` when session continuity across many exchanges matters — for example, a coaching bot or long research assistant where context from 20 messages ago is still relevant. Note that `summarize` adds a small extra LLM call per message.
+
+### Max Token Allocation
+
+Sets the hard limit for how many tokens the chat history block can consume in the context window.
+
+Recommended starting values:
+
+| Use case | Allocation |
+|---|---|
+| Short dev tool sessions | 500 tokens |
+| Customer support bot | 800 tokens |
+| Long-form assistant | 1,200 tokens |
+
+If the history exceeds this allocation, the selected strategy determines what gets dropped or compressed.
+
+### Window Size
+
+The maximum number of messages to include before the strategy kicks in. A window of 5 means the last 5 user+assistant message pairs are eligible for inclusion.
+
+For most use cases, 5–10 messages is sufficient. Larger windows are only useful when the user frequently refers back to something said many exchanges ago.
+
+---
+
+## Token Budget Impact
+
+The Chat History node competes for space in the total context window alongside the System Prompt, RAG chunks, and LLM output. Check the token budget bar at the top of the Pipeline Canvas after adding the Chat History node — if it turns red, you need to either:
+
+- Reduce the Chat History token allocation
+- Reduce Top-K on the RAG node (try 3 instead of 5)
+- Tighten the system prompt
+
+A well-balanced pipeline leaves at least 300 tokens of headroom for the LLM output block.
+
+---
+
+## The `summarize` Strategy — How It Works
+
+When strategy is set to `summarize`, CET calls the LLM once before the main pipeline run to compress the conversation history beyond the window size into a short paragraph summary. That summary is then injected into the context window in place of the raw messages.
+
+This costs one extra LLM call per message once the history exceeds the window size. The summarization model used is the same model selected in the LLM node. For cost-sensitive pipelines, switch the LLM node to the Budget/RAG model when using `summarize`.
+
+---
+
+## Placement in the Pipeline
+
+The Chat History node must be placed **after the RAG node and before the LLM node**. This ordering ensures:
+
+1. The RAG node retrieves relevant chunks based on the user's current query
+2. The Chat History node adds conversational context from previous messages
+3. The LLM node receives both — retrieved knowledge and conversation history — together
+
+If Chat History is placed before the RAG node, the retrieval query does not benefit from conversational context and follow-up questions may retrieve the wrong chunks.
