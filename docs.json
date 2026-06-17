@@ -31,7 +31,7 @@
           },
           {
             "group": "Use Cases",
-            "pages": ["docs/use-cases/api-docs-bot"]
+            "pages": ["docs/use-cases/api-docs-bot", "docs/use-cases/arturo-legal-rag"]
           },
           {
             "group": "Core Concepts",

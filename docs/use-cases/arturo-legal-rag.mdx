@@ -1,0 +1,75 @@
+---
+title: "Legal Contract Review Bot"
+description: "How CET exposed systematic cross-document hallucination in a legal AI system — and fixed it in 20 minutes."
+---
+
+# Legal Contract Review Bot
+
+A case study of how Arturo's legal AI was silently hallucinating across contracts — and how CET's chunk inspection made the failure visible and fixable in minutes instead of weeks.
+
+## The Problem
+
+Arturo's legal AI was hallucinating — not randomly, but **systematically**. Every retrieval was operating in the Marginal zone (0.50–0.65 similarity). The model had no way to know the chunks were unreliable, so it synthesized content from three different contracts — an Employment Contract, an NDA, and a Vendor Agreement — into one confident, wrong answer. The lawyer reviewing the output never knew.
+
+**Smoking gun:** an NDA chunk scored **0.63 (Marginal)** and was retrieved alongside chunks from the Employment Contract and Vendor Agreement. CET's chunk inspection tool made this visible at the message level in 20 minutes. Without CET, this is weeks of debugging.
+
+<Warning title="Run 1 — what cross-document hallucination looks like">
+  At a `0.50` threshold, the bot returned a single confident answer that quietly fused clauses from three separate contracts. In a legal context this is especially dangerous: the answer reads as authoritative, cites no source, and the lawyer has no signal that the model stitched together incompatible terms from different agreements.
+</Warning>
+
+<Note title="The chunk inspection tool">
+  Every assistant message in the CET Playground exposes the chunks that were retrieved for that exact turn — click the arrow next to a message to expand them and read each chunk's similarity score. That per-message visibility is what turned an invisible retrieval failure into a 20-minute fix.
+</Note>
+
+## Pipeline
+
+**Legal Contracts RAG — Baseline Test (5 nodes)**
+
+```
+System Prompt → Vector Search → Chat History → LLM Model → Output
+```
+
+**Knowledge base:** 3 legal documents · 5 chunks
+
+## Test Results — All 5 Runs
+
+| Run | Query | Threshold | Output | Result |
+|---|---|---|---|---|
+| 1 | Confidentiality duration | `0.50` | Mixed 3 docs — confident wrong answer | 🔴 Cross-doc hallucination |
+| 2 | Confidentiality duration | `0.85` | "I could not find this clause" | ✅ Safe refusal |
+| 3 | Vendor non-compete breach | `0.75` | "I could not find this clause" | ✅ Correct — clause doesn't exist |
+| 4 | Liability cap (software defects) | `0.75` | "I could not find this clause" | ⚠️ Threshold too strict |
+| 5 | Liability cap (software defects) | `0.85` | "I could not find this clause" | ✅ Confirms 0.85 is consistently conservative |
+
+## Before / After
+
+Raising the similarity threshold from `0.50` to `0.85` eliminated the hallucination and cut cost by 94%.
+
+| Metric | Broken (`0.50`) | Optimized (`0.85`) |
+|---|---|---|
+| Tokens per query | 2,556 | 132 |
+| Cost per query | $0.0070 | $0.0004 |
+| Cross-doc hallucination | 🔴 Confirmed | ✅ Eliminated |
+
+**Cost reduction: 94%**
+
+## Chat History 2-Turn Test
+
+**Turn 1:** *"What is the confidentiality duration in the NDA?"*
+
+- ✅ 808 tokens · $0.0040 · 3.23s · 1 chunk · NDA only, no cross-document contamination
+- Correctly returned: Section 2.1 (5 years), Section 2.2 (survives termination), Section 2.3 (trade secrets — indefinitely)
+
+**Turn 2:** *"And what about the employment contract — does it have a similar clause?"*
+
+- ✅ 907 tokens · $0.0056 · 5.79s · 1 chunk · retrieved Section 4 of the Employment Agreement correctly
+- Chat History understood that "a similar clause" referred to confidentiality from Turn 1
+- The bot stayed in its lane — asking for clarification rather than inferring across documents
+
+## Key Finding
+
+> No single threshold works for every legal query. The recommended production range is **0.60–0.70** — precise enough to surface real clauses, strict enough to prevent fabrication.
+
+<Tip title="Recommended production range: 0.60–0.70">
+  The recommended production range is 0.60–0.70 — precise enough to surface real clauses, strict enough to prevent fabrication.
+</Tip>
