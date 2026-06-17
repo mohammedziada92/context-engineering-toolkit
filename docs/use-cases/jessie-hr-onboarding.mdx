@@ -1,0 +1,79 @@
+---
+title: "HR Onboarding Bot"
+description: "How CET fixed an HR bot that was giving new employees outdated benefits information — without rebuilding the pipeline."
+---
+
+# HR Onboarding Bot
+
+A case study of how Jessie's HR onboarding bot was silently answering new-hire questions from outdated policy data — and how re-ingesting the current policy in CET fixed it without rebuilding the pipeline.
+
+## The Problem
+
+Jessie's HR Onboarding Bot was answering new employee questions using v1 policy data. Employees were receiving wrong benefit details — a 90-day health wait instead of 30, and 8 weeks parental leave instead of 16. The bot had no way to know the policy had changed. No error, no warning — just confidently wrong answers.
+
+<Warning title="Wrong answers, silently">
+  The bot gives wrong answers with no error and no signal to the employee that the information is outdated — a new hire receives the outdated detail as if it were current.
+</Warning>
+
+## V1 vs V2 — Policy Changes
+
+| Benefit | V1 (Outdated) | V2 (Current) |
+|---|---|---|
+| Health coverage wait | 90 days | **30 days** |
+| Health premium | $180/mo | **$95/mo** |
+| Annual leave | 10 days, 6-month wait | **15 days, Day 1** |
+| Parental leave | 8 wks primary / 2 wks secondary | **16 wks / 6 wks** |
+| 401k match | 3%, 6-month wait | **5%, Day 1, immediate vest** |
+| Remote work | Not permitted first 90 days | **Hybrid from Day 1** |
+| Laptop | Dell Latitude | **MacBook Pro M3 or Dell XPS** |
+
+## Pipeline Config
+
+**HR Onboarding (3 nodes)**
+
+```
+System Prompt → Vector Search → LLM Model → Output
+```
+
+- **Knowledge base:** HR Onboarding — Jessie (v1 + v2 both ingested)
+- **Embeddings:** `baai/bge-m3`
+- **Model:** Claude Sonnet 4.6
+- **Note:** No Chat History node — stateless Q&A, each question is standalone
+
+## KB Chunk State — After Re-ingestion
+
+| Chunk | Version | Tokens | Status |
+|---|---|---|---|
+| Chunk 1 | V1.0, Jan 1 2024 | 454 | 🔴 SUPERSEDED |
+| Chunk 2 | V2.0, Jan 1 2025 | 501 | ✅ CURRENT |
+| Chunk 3 | V2 overflow (401k/Section 6) | 179 | ✅ CURRENT |
+
+<Note title="Uploading is not enough — re-ingest">
+  Uploading alone is not enough — re-ingestion is required for new content to be indexed and retrievable.
+</Note>
+
+## 3-Query Playground Results — All from V2 ✅
+
+| Query | Answer | Tokens | Cost | Latency | Chunks |
+|---|---|---|---|---|---|
+| "When does health insurance begin?" | 30 days (V2.0) + noted 90-day v1 improvement | 1,533 | $0.0061 | 4.14s | 3 |
+| "Parental leave as primary caregiver?" | 16 wks primary, 6 wks secondary, eligible after 6 months | 1,349 | $0.0056 | 3.56s | 2 |
+| "401k match and when can I start?" | Day 1, 5% match, immediate vesting | 1,621 | $0.0073 | 5.84s | 3 |
+
+**Total session: 8 messages · 4,503 tokens · $0.0190**
+
+## CET Fix Summary
+
+| Problem | Fix | Result |
+|---|---|---|
+| Bot answering from outdated v1 | Ingest v2 alongside v1 | Bot auto-prioritizes CURRENT status doc |
+| No version transparency | System prompt forces version citation | Employee sees exact policy version |
+| No re-ingestion workflow | CET KB "Add Content" | One paste → instant update, no rebuild |
+
+## Key Insight
+
+> With both versions in the KB, the bot didn't just flip the answer — it spontaneously noted *"This is actually an improvement from the previous policy, which had a 90-day waiting period"* because it saw both chunks and used v1 as historical context.
+
+<Tip title="Keep old versions in the KB">
+  Keep old versions in the KB deliberately — they become historical context that makes answers richer, not noise.
+</Tip>

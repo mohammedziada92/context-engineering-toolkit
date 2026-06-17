@@ -31,7 +31,7 @@
           },
           {
             "group": "Use Cases",
-            "pages": ["docs/use-cases/api-docs-bot", "docs/use-cases/arturo-legal-rag"]
+            "pages": ["docs/use-cases/api-docs-bot", "docs/use-cases/arturo-legal-rag", "docs/use-cases/jessie-hr-onboarding"]
           },
           {
             "group": "Core Concepts",
