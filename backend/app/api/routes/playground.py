@@ -411,8 +411,13 @@ async def chat_stream(
                 effective_kb_id = rag_kb_id
             if rag_data.get("top_k"):
                 effective_top_k = rag_data["top_k"]
+            # Node config is authoritative in pipeline mode: the Vector Search node's
+            # similarity_threshold IS the retrieval gate. Using min(session, node) here
+            # let the Playground session's default threshold (0.50) silently downgrade a
+            # strict node setting (e.g. 0.85 -> 0.50), so sub-threshold chunks leaked
+            # into the LLM context. CET-043.
             if rag_data.get("similarity_threshold"):
-                effective_threshold = min(body.threshold, rag_data["similarity_threshold"])
+                effective_threshold = rag_data["similarity_threshold"]
         else:
             logger.warning("Playground pipeline mode: pipeline {} not found for user {}", body.pipeline_id, user_id)
 
